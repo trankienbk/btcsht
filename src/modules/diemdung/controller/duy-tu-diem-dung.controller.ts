@@ -1,128 +1,54 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Param,
-  Patch,
-  Post,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiQuery,
-  ApiResponse,
-  ApiTags,
-} from '@nestjs/swagger';
-import { AuthGuard } from 'src/modules/sys/auth/guards/auth.guard';
-import {
-  CreateDuyTuDiemDungDto,
-  UpdateDuyTuDiemDungDto,
-} from '../dtos/duy-tu-diem-dung.dto';
+import { Controller } from '@nestjs/common';
+import { MessagePattern, Payload } from '@nestjs/microservices';
+import { MSCommunicate } from 'src/utils/ms-output.util';
+import { IDuyTuDiemDung } from '../interface/duy-tu-diem-dung.interface';
 import { DuyTuDiemDungService } from '../service/duy-tu-diem-dung.service';
-import ResponseHelper from 'src/utils/ms-response.utli';
+
 @Controller('diem-dung/duy-tu')
-@ApiTags('Duy tu điểm dừng')
 export class DuyTuDiemDungController {
-  constructor(private duyTuDiemDungService: DuyTuDiemDungService) {}
+  constructor(private readonly duyTuDiemDungService: DuyTuDiemDungService) {}
 
-  @Get()
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth('Token')
-  @ApiQuery({
-    name: 'offset',
-    required: false,
-    description: 'Bỏ qua một số lượng bản ghi nhất định',
-    type: 'number',
-  })
-  @ApiQuery({
-    name: 'limit',
-    required: false,
-    description: 'Giới hạn số bản ghi trong một trang',
-    type: 'number',
-  })
-  @ApiQuery({
-    name: 'diemDungId',
-    required: true,
-    description: 'Điểm dừng Id',
-    type: 'number',
-  })
-  @ApiOperation({ summary: 'Danh sách duy tu điểm dừng' })
-  @ApiResponse({
-    status: 200,
-    description: 'Get all duy tu diem dung successfully',
-  })
+  @MessagePattern({ btcsht: 'diem_dung.duy_tu_diem_dung.find_many' })
   async findManyDuyTuDiemDung(
-    @Query('offset') offset: number | null,
-    @Query('limit') limit: number | null,
-    @Query('diemDungId') diemDungId: number,
-  ) {
-    const result = await this.duyTuDiemDungService.findAll(
-      offset,
-      limit,
-      diemDungId,
-    );
-    return ResponseHelper.response(
-      result.statusCode,
-      result.message,
-      result.data,
+    @Payload()
+    payload: {
+      offset: number | null;
+      limit: number | null;
+      diemDungId: number;
+    },
+  ): Promise<MSCommunicate> {
+    return await this.duyTuDiemDungService.findMany(
+      payload.offset,
+      payload.limit,
+      payload.diemDungId,
     );
   }
 
-  @Get('/:id')
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth('Token')
-  @ApiOperation({ summary: 'Lấy một duy tu điểm dừng' })
-  @ApiResponse({
-    status: 200,
-    description: 'Get one duy tu diem dung successfully',
-  })
-  async findDuyTuDiemDungById(@Param('id') id: number) {
-    const result = await this.duyTuDiemDungService.findOneById(id);
-    return result;
+  @MessagePattern({ btcsht: 'diem_dung.duy_tu_diem_dung.find_one' })
+  async findOneDuyTuDiemDungById(
+    @Payload() id: number,
+  ): Promise<MSCommunicate> {
+    return await this.duyTuDiemDungService.findOneById(id);
   }
 
-  @Post()
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth('Token')
-  @ApiOperation({ summary: 'Tạo mới một duy tu điểm dừng' })
-  @ApiResponse({
-    status: 200,
-    description: 'Create one duy tu diem dung successfully',
-  })
-  async createOneDuyTuDiemDung(@Body() payload: CreateDuyTuDiemDungDto) {
-    const result = await this.duyTuDiemDungService.createOne(payload);
-    return result;
+  @MessagePattern({ btcsht: 'diem_dung.duy_tu_diem_dung.create' })
+  async createOneDuyTuDiemDung(
+    @Payload() payload: IDuyTuDiemDung,
+  ): Promise<MSCommunicate> {
+    return await this.duyTuDiemDungService.createOne(payload);
   }
 
-  @Patch('/:id')
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth('Token')
-  @ApiOperation({ summary: 'Sửa đổi một duy tu điểm dừng' })
-  @ApiResponse({
-    status: 200,
-    description: 'Update one duy tu diem dung successfully',
-  })
+  @MessagePattern({ btcsht: 'diem_dung.duy_tu_diem_dung.update' })
   async updateOneDuyTuDiemDung(
-    @Param('id') id: number,
-    @Body() payload: UpdateDuyTuDiemDungDto,
-  ) {
-    const result = await this.duyTuDiemDungService.updateOne(id, payload);
-    return result;
+    @Payload() payload: { id: number; data: IDuyTuDiemDung },
+  ): Promise<MSCommunicate> {
+    return await this.duyTuDiemDungService.updateOne(payload.id, payload.data);
   }
 
-  @Delete('/:id')
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth('Token')
-  @ApiOperation({ summary: 'Xoá một duy tu điểm dừng' })
-  @ApiResponse({
-    status: 200,
-    description: 'Delete one duy tu diem dung successfully',
-  })
-  async softDeleteOneDuyTuDiemDung(@Param('id') id: number) {
-    const result = await this.duyTuDiemDungService.softDelete(id);
-    return result;
+  @MessagePattern({ btcsht: 'diem_dung.duy_tu_diem_dung.delete' })
+  async softDeleteOneDuyTuDiemDung(
+    @Payload() id: number,
+  ): Promise<MSCommunicate> {
+    return await this.duyTuDiemDungService.softDelete(id);
   }
 }

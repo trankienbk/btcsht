@@ -1,68 +1,155 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
-import { firstValueFrom, timeout } from 'rxjs';
+import { HttpStatus, Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 import { MSCommunicate } from 'src/utils/ms-output.util';
-import {
-  CreateDanhMucVachSonDto,
-  UpdateDanhMucVachSonDto,
-} from '../dtos/danh-muc-vach-son.dto';
-import { MS_TIME_OUT } from 'src/common/constants/ms.constants';
+import { Like, Not, Repository } from 'typeorm';
+import { DanhMucVachSonEntity } from '../entities/danh-muc-vach-son.entity';
+import { IDanhMucVachSon } from '../interface/danh-muc-vach-son.interface';
+import { Content } from 'src/common/message/content.message';
+import { Subject } from 'src/common/message/subject.message';
+import { Field } from 'src/common/message/field.message';
+
 @Injectable()
 export class DanhMucVachSonService {
-  constructor(@Inject('MS_SERVICE') private readonly mSClient: ClientProxy) {}
+  constructor(
+    @InjectRepository(DanhMucVachSonEntity)
+    private loaiVachSonRepository: Repository<DanhMucVachSonEntity>,
+  ) {}
 
-  async findAll(
+  async findMany(
     offset: number | null,
     limit: number | null,
     name: string | null,
-  ) {
-    const res: MSCommunicate = await firstValueFrom(
-      this.mSClient
-        .send(
-          { btcsht: 'vach_son.danh_muc_vach_son.find_many' },
-          { offset, limit, name },
-        )
-        .pipe(timeout(MS_TIME_OUT)),
+  ): Promise<MSCommunicate> {
+    const loaiVachSon = await this.loaiVachSonRepository.find({
+      where: { name: Like(`%${name ?? ''}%`) },
+      skip: limit && offset,
+      take: limit,
+    });
+
+    const total = await this.loaiVachSonRepository.count();
+    const data = {
+      roadMakingsType: loaiVachSon,
+      total: total,
+    };
+    return new MSCommunicate(
+      HttpStatus.OK,
+      Content.SUCCESSFULLY,
+      Subject.LOAI_VACH_SON,
+      data,
+      Field.READ,
     );
-    return res;
   }
 
-  async findOneById(id: number) {
-    const res: MSCommunicate = await firstValueFrom(
-      this.mSClient
-        .send({ btcsht: 'vach_son.danh_muc_vach_son.find_one' }, id)
-        .pipe(timeout(MS_TIME_OUT)),
+  async findOneById(id: number): Promise<MSCommunicate> {
+    const paintLine = await this.loaiVachSonRepository.findOne({
+      where: { id: id },
+    });
+    if (!paintLine) {
+      return new MSCommunicate(
+        HttpStatus.ACCEPTED,
+        Content.NOT_FOUND,
+        Subject.LOAI_VACH_SON,
+        null,
+        Field.READ,
+      );
+    }
+    return new MSCommunicate(
+      HttpStatus.OK,
+      Content.SUCCESSFULLY,
+      Subject.LOAI_VACH_SON,
+      paintLine,
+      Field.READ,
     );
-    return res;
   }
 
-  async createOne(payload: CreateDanhMucVachSonDto) {
-    const res: MSCommunicate = await firstValueFrom(
-      this.mSClient
-        .send({ btcsht: 'vach_son.danh_muc_vach_son.create' }, payload)
-        .pipe(timeout(MS_TIME_OUT)),
+  async createOne(payload: IDanhMucVachSon): Promise<MSCommunicate> {
+    const exist = await this.loaiVachSonRepository.findOne({
+      where: { name: payload.name },
+    });
+    if (exist) {
+      return new MSCommunicate(
+        HttpStatus.ACCEPTED,
+        Content.EXIST,
+        Subject.LOAI_VACH_SON,
+        null,
+        Field.NAME,
+      );
+    }
+
+    const paintLine = await this.loaiVachSonRepository.save(payload);
+
+    return new MSCommunicate(
+      HttpStatus.CREATED,
+      Content.SUCCESSFULLY,
+      Subject.LOAI_VACH_SON,
+      paintLine,
+      Field.CREATE,
     );
-    return res;
   }
 
-  async updateOne(id: number, payload: UpdateDanhMucVachSonDto) {
-    const res: MSCommunicate = await firstValueFrom(
-      this.mSClient
-        .send(
-          { btcsht: 'vach_son.danh_muc_vach_son.update' },
-          { id: id, data: payload },
-        )
-        .pipe(timeout(MS_TIME_OUT)),
+  async updateOne(
+    id: number,
+    payload: IDanhMucVachSon,
+  ): Promise<MSCommunicate> {
+    const exist = await this.loaiVachSonRepository.findOne({
+      where: { id: id },
+    });
+    if (!exist) {
+      return new MSCommunicate(
+        HttpStatus.ACCEPTED,
+        Content.NOT_FOUND,
+        Subject.LOAI_VACH_SON,
+        null,
+        Field.UPDATE,
+      );
+    }
+
+    const existName = await this.loaiVachSonRepository.findOne({
+      where: { name: payload.name, id: Not(exist.id) },
+    });
+    if (existName) {
+      return new MSCommunicate(
+        HttpStatus.ACCEPTED,
+        Content.EXIST,
+        Subject.LOAI_VACH_SON,
+        null,
+        Field.NAME,
+      );
+    }
+
+    const paintLine = await this.loaiVachSonRepository.save({
+      id: exist.id,
+      ...payload,
+    });
+    return new MSCommunicate(
+      HttpStatus.OK,
+      Content.SUCCESSFULLY,
+      Subject.LOAI_VACH_SON,
+      paintLine,
+      Field.UPDATE,
     );
-    return res;
   }
 
-  async softDelete(id: number) {
-    const res: MSCommunicate = await firstValueFrom(
-      this.mSClient
-        .send({ btcsht: 'vach_son.danh_muc_vach_son.delete' }, id)
-        .pipe(timeout(MS_TIME_OUT)),
+  async softDeleteOne(id: number): Promise<MSCommunicate> {
+    const exist = await this.loaiVachSonRepository.findOne({
+      where: { id: id },
+    });
+    if (!exist) {
+      return new MSCommunicate(
+        HttpStatus.ACCEPTED,
+        Content.NOT_FOUND,
+        Subject.LOAI_VACH_SON,
+        null,
+        Field.DELETE,
+      );
+    }
+    await this.loaiVachSonRepository.softDelete(id);
+    return new MSCommunicate(
+      HttpStatus.OK,
+      Content.SUCCESSFULLY,
+      Subject.LOAI_VACH_SON,
+      id,
+      Field.DELETE,
     );
-    return res;
   }
 }

@@ -1,65 +1,194 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
-import { firstValueFrom, timeout } from 'rxjs';
+import { HttpStatus, Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 import { MSCommunicate } from 'src/utils/ms-output.util';
-import {
-  CreateDuongNoiBoDto,
-  UpdateDuongNoiBoDto,
-} from '../dtos/duong-noi-bo.dto';
-import { MS_TIME_OUT } from 'src/common/constants/ms.constants';
+import { Like, Not, Repository } from 'typeorm';
+import { DuongNoiBoEntity } from '../entities/duong-noi-bo.entity';
+import { IDanhMucDuongNoiBo } from '../interface/duong-noi-bo.interface';
+import { Subject } from 'src/common/message/subject.message';
+import { Content } from 'src/common/message/content.message';
+import { Field } from 'src/common/message/field.message';
+import { DiemDungEntity } from 'src/modules/diemdung/entities/diem-dung.entity';
+
 @Injectable()
 export class DuongNoiBoService {
-  constructor(@Inject('MS_SERVICE') private readonly mSClient: ClientProxy) {}
+  constructor(
+    @InjectRepository(DuongNoiBoEntity)
+    private DuongNoiBoRepository: Repository<DuongNoiBoEntity>,
+    @InjectRepository(DiemDungEntity)
+    private diemDungRepository: Repository<DiemDungEntity>,
+  ) {}
 
   async findMany(
     offset: number | null,
     limit: number | null,
     name: string | null,
-  ) {
-    const res: MSCommunicate = await firstValueFrom(
-      this.mSClient
-        .send(
-          { btcsht: 'duong_noi_bo.duong_noi_bo.find_many' },
-          { offset, limit, name },
-        )
-        .pipe(timeout(MS_TIME_OUT)),
+  ): Promise<MSCommunicate> {
+    const DuongNoiBo = await this.DuongNoiBoRepository.find({
+      relations: {
+        diemDungDuongNoiBo: true,
+      },
+      where: {
+        name: Like(`%${name ?? ''}%`),
+      },
+      skip: limit && offset,
+      take: limit,
+    });
+
+    const total = await this.DuongNoiBoRepository.count();
+    const data = {
+      pathway: DuongNoiBo,
+      total: total,
+    };
+    return new MSCommunicate(
+      HttpStatus.OK,
+      Content.SUCCESSFULLY,
+      Subject.PATHWAY,
+      data,
+      Field.READ,
     );
-    return res;
   }
 
-  async findOne(id: number) {
-    const res: MSCommunicate = await firstValueFrom(
-      this.mSClient
-        .send({ btcsht: 'duong_noi_bo.duong_noi_bo.find_one' }, id)
-        .pipe(timeout(MS_TIME_OUT)),
+  async findOne(id: number): Promise<MSCommunicate> {
+    const pathway = await this.DuongNoiBoRepository.findOne({
+      relations: {
+        diemDungDuongNoiBo: true,
+      },
+      where: { id: id },
+    });
+    if (!pathway) {
+      return new MSCommunicate(
+        HttpStatus.ACCEPTED,
+        Content.NOT_FOUND,
+        Subject.PATHWAY,
+        null,
+        Field.READ,
+      );
+    }
+    return new MSCommunicate(
+      HttpStatus.OK,
+      Content.SUCCESSFULLY,
+      Subject.PATHWAY,
+      pathway,
+      Field.READ,
     );
-    return res;
   }
 
-  async create(payload: CreateDuongNoiBoDto) {
-    const res: MSCommunicate = await firstValueFrom(
-      this.mSClient.send(
-        { btcsht: 'duong_noi_bo.duong_noi_bo.create' },
-        payload,
-      ),
+  async create(payload: IDanhMucDuongNoiBo): Promise<MSCommunicate> {
+    const exist = await this.DuongNoiBoRepository.findOne({
+      where: { name: payload.name },
+    });
+    if (exist) {
+      return new MSCommunicate(
+        HttpStatus.ACCEPTED,
+        Content.EXIST,
+        Subject.PATHWAY,
+        null,
+        Field.NAME,
+      );
+    }
+
+    const diemDung = await this.diemDungRepository.findOne({
+      where: { id: payload.diemDungId },
+    });
+
+    if (!diemDung) {
+      return new MSCommunicate(
+        HttpStatus.ACCEPTED,
+        Content.NOT_FOUND,
+        Subject.PATHWAY,
+        null,
+        Field.DIEM_DUNG_ID,
+      );
+    }
+
+    const pathway = await this.DuongNoiBoRepository.save({
+      name: payload.name,
+      description: payload.description,
+      diemDungDuongNoiBo: {
+        id: payload.diemDungId,
+      },
+    });
+
+    return new MSCommunicate(
+      HttpStatus.CREATED,
+      Content.SUCCESSFULLY,
+      Subject.PATHWAY,
+      pathway,
+      Field.CREATE,
     );
-    return res;
   }
 
-  async update(id: number, payload: UpdateDuongNoiBoDto) {
-    const res: MSCommunicate = await firstValueFrom(
-      this.mSClient.send(
-        { btcsht: 'duong_noi_bo.duong_noi_bo.update' },
-        { id: id, data: payload },
-      ),
+  async update(
+    id: number,
+    payload: IDanhMucDuongNoiBo,
+  ): Promise<MSCommunicate> {
+    const exist = await this.DuongNoiBoRepository.findOne({
+      where: { name: payload.name, id: Not(id) },
+    });
+    if (exist) {
+      return new MSCommunicate(
+        HttpStatus.ACCEPTED,
+        Content.EXIST,
+        Subject.PATHWAY,
+        null,
+        Field.NAME,
+      );
+    }
+
+    const diemDung = await this.diemDungRepository.findOne({
+      where: { id: payload.diemDungId },
+    });
+
+    if (!diemDung) {
+      return new MSCommunicate(
+        HttpStatus.ACCEPTED,
+        Content.NOT_FOUND,
+        Subject.PATHWAY,
+        null,
+        Field.DIEM_DUNG_ID,
+      );
+    }
+
+    await this.DuongNoiBoRepository.update(
+      { id },
+      {
+        name: payload.name,
+        description: payload.description,
+        diemDungDuongNoiBo: {
+          id: payload.diemDungId,
+        },
+      },
     );
-    return res;
+
+    return new MSCommunicate(
+      HttpStatus.OK,
+      Content.SUCCESSFULLY,
+      Subject.PATHWAY,
+      payload,
+      Field.UPDATE,
+    );
   }
 
-  async delete(id: number) {
-    const res: MSCommunicate = await firstValueFrom(
-      this.mSClient.send({ btcsht: 'duong_noi_bo.duong_noi_bo.delete' }, id),
+  async delete(id: number): Promise<MSCommunicate> {
+    const exist = await this.DuongNoiBoRepository.findOne({
+      where: { id: id },
+    });
+    if (!exist) {
+      return new MSCommunicate(
+        HttpStatus.ACCEPTED,
+        Content.NOT_FOUND,
+        Subject.PATHWAY,
+        null,
+        Field.DELETE,
+      );
+    }
+    await this.DuongNoiBoRepository.softDelete(id);
+    return new MSCommunicate(
+      HttpStatus.OK,
+      Content.SUCCESSFULLY,
+      Subject.PATHWAY,
+      id,
+      Field.DELETE,
     );
-    return res;
   }
 }

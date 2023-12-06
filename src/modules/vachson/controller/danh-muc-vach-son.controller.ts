@@ -1,145 +1,52 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Param,
-  Patch,
-  Post,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiQuery,
-  ApiResponse,
-  ApiTags,
-} from '@nestjs/swagger';
-import { AuthGuard } from 'src/modules/sys/auth/guards/auth.guard';
-import {
-  CreateDanhMucVachSonDto,
-  UpdateDanhMucVachSonDto,
-} from '../dtos/danh-muc-vach-son.dto';
+import { Controller } from '@nestjs/common';
+import { MessagePattern, Payload } from '@nestjs/microservices';
+import { MSCommunicate } from 'src/utils/ms-output.util';
+import { IDanhMucVachSon } from '../interface/danh-muc-vach-son.interface';
 import { DanhMucVachSonService } from '../service/danh-muc-vach-son.service';
-import ResponseHelper from 'src/utils/ms-response.utli';
 
-@Controller('vach-son/loai-vach-son')
-@ApiTags('Loại vạch sơn')
+@Controller('danhmuc/vachson')
 export class DanhMucVachSonController {
-  constructor(private danhMucVachSonService: DanhMucVachSonService) {}
+  constructor(private readonly danhMucVachSonService: DanhMucVachSonService) {}
 
-  @Get()
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth('Token')
-  @ApiQuery({
-    name: 'offset',
-    required: false,
-    description: 'Bỏ qua một số lượng bản ghi nhất định',
-    type: 'number',
-  })
-  @ApiQuery({
-    name: 'limit',
-    required: false,
-    description: 'Giới hạn số bản ghi trong một trang',
-    type: 'number',
-  })
-  @ApiQuery({
-    name: 'name',
-    required: false,
-    description: 'Tên loại vạch sơn',
-    type: 'string',
-  })
-  @ApiOperation({ summary: 'Danh sách loại vạch sơn' })
-  @ApiResponse({
-    status: 200,
-    description: 'Get all loại vach son successfully',
-  })
+  @MessagePattern({ btcsht: 'vach_son.danh_muc_vach_son.find_many' })
   async findManyDanhMucVachSon(
-    @Query('offset') offset: number | null,
-    @Query('limit') limit: number | null,
-    @Query('name') name: string | null,
-  ) {
-    const result = await this.danhMucVachSonService.findAll(
-      offset,
-      limit,
-      name,
-    );
-    return ResponseHelper.response(
-      result.statusCode,
-      result.message,
-      result.data,
+    @Payload()
+    payload: {
+      offset: number | null;
+      limit: number | null;
+      name: string | null;
+    },
+  ): Promise<MSCommunicate> {
+    return await this.danhMucVachSonService.findMany(
+      payload.offset,
+      payload.limit,
+      payload.name,
     );
   }
 
-  @Get('/:id')
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth('Token')
-  @ApiOperation({ summary: 'Lấy một loại vạch sơn cụ thể' })
-  @ApiResponse({
-    status: 200,
-    description: 'Get one loại vach son successfully',
-  })
-  async findDanhMucVachSonById(@Param('id') id: number) {
-    const result = await this.danhMucVachSonService.findOneById(id);
-    return ResponseHelper.response(
-      result.statusCode,
-      result.message,
-      result.data,
-    );
+  @MessagePattern({ btcsht: 'vach_son.danh_muc_vach_son.find_one' })
+  async findOneDanhMucVachSonById(
+    @Payload() id: number,
+  ): Promise<MSCommunicate> {
+    return await this.danhMucVachSonService.findOneById(id);
   }
 
-  @Post()
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth('Token')
-  @ApiOperation({ summary: 'Tạo mới một loại vạch sơn cụ thể' })
-  @ApiResponse({
-    status: 200,
-    description: 'Create one loại vach son successfully',
-  })
-  async createOneDanhMucVachSon(@Body() payload: CreateDanhMucVachSonDto) {
-    const result = await this.danhMucVachSonService.createOne(payload);
-    return ResponseHelper.response(
-      result.statusCode,
-      result.message,
-      result.data,
-    );
+  @MessagePattern({ btcsht: 'vach_son.danh_muc_vach_son.create' })
+  async createOneDanhMucVachSon(
+    @Payload() payload: IDanhMucVachSon,
+  ): Promise<MSCommunicate> {
+    return await this.danhMucVachSonService.createOne(payload);
   }
 
-  @Patch('/:id')
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth('Token')
-  @ApiOperation({ summary: 'Cập nhật một loại vạch sơn cụ thể' })
-  @ApiResponse({
-    status: 200,
-    description: 'Update one loại vach son successfully',
-  })
+  @MessagePattern({ btcsht: 'vach_son.danh_muc_vach_son.update' })
   async updateOneDanhMucVachSon(
-    @Param('id') id: any,
-    @Body() payload: UpdateDanhMucVachSonDto,
-  ) {
-    const result = await this.danhMucVachSonService.updateOne(id, payload);
-    return ResponseHelper.response(
-      result.statusCode,
-      result.message,
-      result.data,
-    );
+    @Payload() payload: { id: number; data: IDanhMucVachSon },
+  ): Promise<MSCommunicate> {
+    return await this.danhMucVachSonService.updateOne(payload.id, payload.data);
   }
 
-  @Delete('/:id')
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth('Token')
-  @ApiOperation({ summary: 'Xoá một loại vạch sơn cụ thể' })
-  @ApiResponse({
-    status: 200,
-    description: 'Delete one loại vach son successfully',
-  })
-  async softDeleteOneDanhMucVachSon(@Param('id') id: number) {
-    const result = await this.danhMucVachSonService.softDelete(id);
-    return ResponseHelper.response(
-      result.statusCode,
-      result.message,
-      result.data,
-    );
+  @MessagePattern({ btcsht: 'vach_son.danh_muc_vach_son.delete' })
+  async deleteOneDanhMucVachSon(@Payload() id: number): Promise<MSCommunicate> {
+    return await this.danhMucVachSonService.softDeleteOne(id);
   }
 }

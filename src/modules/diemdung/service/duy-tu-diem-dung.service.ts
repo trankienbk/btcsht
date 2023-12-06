@@ -1,69 +1,235 @@
-import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
-import { firstValueFrom, timeout } from 'rxjs';
-import { MS_TIME_OUT } from 'src/common/constants/ms.constants';
+import { HttpStatus, Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 import { MSCommunicate } from 'src/utils/ms-output.util';
-import {
-  CreateDuyTuDiemDungDto,
-  UpdateDuyTuDiemDungDto,
-} from '../dtos/duy-tu-diem-dung.dto';
+import { Repository } from 'typeorm';
+import { DuyTuDiemDungEntity } from '../entities/duy-tu-diem-dung.entity';
+import { IDuyTuDiemDung } from '../interface/duy-tu-diem-dung.interface';
+import { DiemDungEntity } from '../entities/diem-dung.entity';
+import { Content } from 'src/common/message/content.message';
+import { Subject } from 'src/common/message/subject.message';
+import { Field } from 'src/common/message/field.message';
+import { TinhTrangEntity } from '../../../modules/tinhtrang/entities/tinh-trang.entity';
+import { DanhMucDuyTuEntity } from 'src/modules/duytu/entities/danh-muc-duy-tu.entity';
+import CommonHelper from 'src/utils/common.util';
+
 @Injectable()
 export class DuyTuDiemDungService {
-  constructor(@Inject('MS_SERVICE') private readonly mSClient: ClientProxy) {}
+  constructor(
+    @InjectRepository(DuyTuDiemDungEntity)
+    private duyTuDiemDungRepository: Repository<DuyTuDiemDungEntity>,
+    @InjectRepository(TinhTrangEntity)
+    private tinhTrangRepository: Repository<TinhTrangEntity>,
+    @InjectRepository(DiemDungEntity)
+    private diemDungRepository: Repository<DiemDungEntity>,
+    @InjectRepository(DanhMucDuyTuEntity)
+    private duyTuRepository: Repository<DanhMucDuyTuEntity>,
+  ) {}
 
-  async findAll(
+  async findMany(
     offset: number | null,
     limit: number | null,
     diemDungId: number,
-  ) {
-    const res: MSCommunicate = await firstValueFrom(
-      this.mSClient
-        .send(
-          { btcsht: 'diem_dung.duy_tu_diem_dung.find_many' },
-          { offset, limit, diemDungId },
-        )
-        .pipe(timeout(MS_TIME_OUT)),
+  ): Promise<MSCommunicate> {
+    const duyTuDiemDung = await this.duyTuDiemDungRepository.find({
+      where: {
+        diemDung: {
+          id: diemDungId,
+        },
+      },
+      relations: {
+        duyTu: true,
+        diemDung: true,
+      },
+      skip: limit && offset,
+      take: limit,
+    });
+
+    const total = await this.duyTuDiemDungRepository.count();
+    const data = {
+      duyTuDiemDung: duyTuDiemDung,
+      total: total,
+    };
+    return new MSCommunicate(
+      HttpStatus.OK,
+      Content.SUCCESSFULLY,
+      Subject.DUY_TU_DIEM_DUNG,
+      data,
+      Field.READ,
     );
-    return res;
   }
 
-  async findOneById(id: number) {
-    const res: MSCommunicate = await firstValueFrom(
-      this.mSClient
-        .send({ btcsht: 'diem_dung.duy_tu_diem_dung.find_one' }, id)
-        .pipe(timeout(MS_TIME_OUT)),
+  async findOneById(id: number): Promise<MSCommunicate> {
+    const duyTu = await this.duyTuDiemDungRepository.findOne({
+      relations: {
+        duyTu: true,
+        diemDung: true,
+      },
+      where: { id: id },
+    });
+    if (!duyTu) {
+      return new MSCommunicate(
+        HttpStatus.ACCEPTED,
+        Content.NOT_FOUND,
+        Subject.DUY_TU_DIEM_DUNG,
+        null,
+        Field.READ,
+      );
+    }
+    return new MSCommunicate(
+      HttpStatus.OK,
+      Content.SUCCESSFULLY,
+      Subject.DUY_TU_DIEM_DUNG,
+      duyTu,
+      Field.READ,
     );
-    if (!res.data) throw new HttpException(res.message, HttpStatus.BAD_REQUEST);
-    return res;
   }
 
-  async createOne(payload: CreateDuyTuDiemDungDto) {
-    const res: MSCommunicate = await firstValueFrom(
-      this.mSClient
-        .send({ btcsht: 'diem_dung.duy_tu_diem_dung.create' }, payload)
-        .pipe(timeout(MS_TIME_OUT)),
+  async createOne(payload: IDuyTuDiemDung): Promise<MSCommunicate> {
+    const tinhTrangExist = await this.tinhTrangRepository.findOne({
+      where: { id: payload.tinhTrangId },
+    });
+
+    if (!tinhTrangExist) {
+      return new MSCommunicate(
+        HttpStatus.ACCEPTED,
+        Content.NOT_FOUND,
+        Subject.DUY_TU_DIEM_DUNG,
+        null,
+        Field.TINH_TRANG_ID,
+      );
+    }
+
+    const diemDungExist = await this.diemDungRepository.findOne({
+      where: { id: payload.diemDungId },
+    });
+
+    if (!diemDungExist) {
+      return new MSCommunicate(
+        HttpStatus.ACCEPTED,
+        Content.NOT_FOUND,
+        Subject.DUY_TU_DIEM_DUNG,
+        null,
+        Field.DIEM_DUNG_ID,
+      );
+    }
+
+    const duyTuExist = await this.duyTuRepository.findOne({
+      where: { id: payload.duyTuId },
+    });
+
+    if (!duyTuExist) {
+      return new MSCommunicate(
+        HttpStatus.ACCEPTED,
+        Content.NOT_FOUND,
+        Subject.DUY_TU_DIEM_DUNG,
+        null,
+        Field.DUY_TU_ID,
+      );
+    }
+
+    const duyTuDiemDung = await this.duyTuDiemDungRepository.save({
+      ngayApDung: payload.ngayApDung,
+      tinhTrangDiemDung: {
+        id: payload.tinhTrangId,
+      },
+      ghiChu: payload.ghiChu,
+      chiTietTinhTrang: payload.chiTietTinhTrang,
+      diemDung: {
+        id: payload.diemDungId,
+      },
+      duyTu: {
+        id: payload.duyTuId,
+      },
+    });
+
+    return new MSCommunicate(
+      HttpStatus.CREATED,
+      Content.SUCCESSFULLY,
+      Subject.DUY_TU_DIEM_DUNG,
+      duyTuDiemDung,
+      Field.CREATE,
     );
-    return res;
   }
 
-  async updateOne(id: number, payload: UpdateDuyTuDiemDungDto) {
-    const res: MSCommunicate = await firstValueFrom(
-      this.mSClient
-        .send(
-          { btcsht: 'diem_dung.duy_tu_diem_dung.update' },
-          { id: id, data: payload },
-        )
-        .pipe(timeout(MS_TIME_OUT)),
+  async updateOne(id: number, payload: IDuyTuDiemDung): Promise<MSCommunicate> {
+    const exist = await this.duyTuDiemDungRepository.findOne({
+      where: { id: id },
+    });
+
+    if (!exist) {
+      return new MSCommunicate(
+        HttpStatus.ACCEPTED,
+        Content.NOT_FOUND,
+        Subject.DUY_TU_DIEM_DUNG,
+        null,
+        Field.UPDATE,
+      );
+    }
+
+    const duyTuExist = await this.duyTuRepository.findOne({
+      where: { id: payload.duyTuId },
+    });
+
+    if (!duyTuExist) {
+      return new MSCommunicate(
+        HttpStatus.ACCEPTED,
+        Content.NOT_FOUND,
+        Subject.DUY_TU_DIEM_DUNG,
+        null,
+        Field.DUY_TU_ID,
+      );
+    }
+
+    const data = await this.duyTuDiemDungRepository.save({
+      id: exist.id,
+      ngayApDung: CommonHelper.opposite(payload.ngayApDung, exist.ngayApDung),
+      tinhTrangDiemDung: {
+        id: CommonHelper.opposite(payload.tinhTrangId, exist.tinhTrangDiemDung),
+      },
+      ghiChu: CommonHelper.opposite(payload.ghiChu, exist.ghiChu),
+      chiTietTinhTrang: CommonHelper.opposite(
+        payload.chiTietTinhTrang,
+        exist.chiTietTinhTrang,
+      ),
+      diemDung: {
+        id: CommonHelper.opposite(payload.diemDungId, exist.diemDung),
+      },
+      duyTu: {
+        id: CommonHelper.opposite(payload.duyTuId, exist.duyTu),
+      },
+    });
+
+    const duyTuDiemDung = await this.duyTuDiemDungRepository.save(data);
+
+    return new MSCommunicate(
+      HttpStatus.OK,
+      Content.SUCCESSFULLY,
+      Subject.DUY_TU_DIEM_DUNG,
+      duyTuDiemDung,
+      Field.UPDATE,
     );
-    return res;
   }
 
   async softDelete(id: number) {
-    const res: MSCommunicate = await firstValueFrom(
-      this.mSClient
-        .send({ btcsht: 'diem_dung.duy_tu_diem_dung.delete' }, id)
-        .pipe(timeout(MS_TIME_OUT)),
+    const exist = await this.duyTuDiemDungRepository.findOne({
+      where: { id: id },
+    });
+    if (!exist) {
+      return new MSCommunicate(
+        HttpStatus.ACCEPTED,
+        Content.NOT_FOUND,
+        Subject.DUY_TU_DIEM_DUNG,
+        null,
+        Field.DELETE,
+      );
+    }
+    await this.duyTuDiemDungRepository.softDelete(id);
+    return new MSCommunicate(
+      HttpStatus.OK,
+      Content.SUCCESSFULLY,
+      Subject.DUY_TU_DIEM_DUNG,
+      id,
+      Field.DELETE,
     );
-    return res;
   }
 }

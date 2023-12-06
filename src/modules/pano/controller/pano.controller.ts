@@ -1,145 +1,52 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Param,
-  Patch,
-  Post,
-  Query,
-  UploadedFile,
-  UseGuards,
-  UseInterceptors,
-} from '@nestjs/common';
-import {
-  ApiBearerAuth,
-  ApiConsumes,
-  ApiOperation,
-  ApiQuery,
-  ApiResponse,
-  ApiTags,
-} from '@nestjs/swagger';
-import { AuthGuard } from 'src/modules/sys/auth/guards/auth.guard';
-import ResponseHelper from 'src/utils/ms-response.utli';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { CreatePanoDto, UpdatePanoDto } from '../dtos/pano.dto';
+import { Controller } from '@nestjs/common';
+import { MessagePattern, Payload } from '@nestjs/microservices';
+import { MSCommunicate } from 'src/utils/ms-output.util';
+import { IPano } from '../interface/pano.interface';
 import { PanoService } from '../service/pano.service';
 
-@Controller('pano/doi-tuong')
-@ApiTags('Pano')
+@Controller('vach-son/doi-tuong')
 export class PanoController {
-  constructor(private panoService: PanoService) {}
+  constructor(private readonly panoService: PanoService) {}
 
-  @Get()
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth('Token')
-  @ApiQuery({
-    name: 'offset',
-    required: false,
-    description: 'Bỏ qua một số lượng bản ghi nhất định',
-    type: 'number',
-  })
-  @ApiQuery({
-    name: 'limit',
-    required: false,
-    description: 'Giới hạn số bản ghi trong một trang',
-    type: 'number',
-  })
-  @ApiQuery({
-    name: 'name',
-    required: false,
-    description: 'Tên loại pano',
-    type: 'string',
-  })
-  @ApiOperation({ summary: 'Danh sách pano' })
-  @ApiResponse({ status: 200, description: 'Get all pano successfully' })
+  @MessagePattern({ btcsht: 'pano.pano.find_many' })
   async findMany(
-    @Query('offset') offset: number | null,
-    @Query('limit') limit: number | null,
-    @Query('name') name: string | null,
-  ) {
-    const result = await this.panoService.findAll(offset, limit, name);
-    return ResponseHelper.response(
-      result.statusCode,
-      result.message,
-      result.data,
+    @Payload()
+    payload: {
+      offset: number | null;
+      limit: number | null;
+      name: string | null;
+    },
+  ): Promise<MSCommunicate> {
+    return await this.panoService.findMany(
+      payload.offset,
+      payload.limit,
+      payload.name,
     );
   }
 
-  @Get('/:id')
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth('Token')
-  @ApiOperation({ summary: 'Lấy một pano cụ thể' })
-  @ApiResponse({ status: 200, description: 'Get one pano successfully' })
-  async findOne(@Param('id') id: number) {
-    const result = await this.panoService.findOne(id);
-    return ResponseHelper.response(
-      result.statusCode,
-      result.message,
-      result.data,
-    );
+  @MessagePattern({ btcsht: 'pano.pano.find_one' })
+  async findOne(@Payload() id: number): Promise<MSCommunicate> {
+    return await this.panoService.findOne(id);
   }
 
-  @Post()
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth('Token')
-  @ApiConsumes('multipart/form-data')
-  @UseInterceptors(FileInterceptor('file'))
-  @ApiOperation({ summary: 'Tạo mới một pano cụ thể' })
-  @ApiResponse({ status: 200, description: 'Create one pano successfully' })
-  async create(
-    @Body() data: CreatePanoDto,
-    @UploadedFile() file: Express.Multer.File,
-  ) {
-    // handle file here
-    console.log(file);
-    const idFile = [1, 2, 3];
-    // then pass file id as array of number to function
-
-    const result = await this.panoService.create(data, idFile);
-    return ResponseHelper.response(
-      result.statusCode,
-      result.message,
-      result.data,
-    );
+  @MessagePattern({ btcsht: 'pano.pano.create' })
+  async create(@Payload() payload: IPano): Promise<MSCommunicate> {
+    return await this.panoService.create(payload);
   }
 
-  @Patch('/:id')
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth('Token')
-  @ApiConsumes('multipart/form-data')
-  @UseInterceptors(FileInterceptor('file'))
-  @ApiOperation({ summary: 'Cập nhật một pano cụ thể' })
-  @ApiResponse({ status: 200, description: 'Update one pano successfully' })
+  @MessagePattern({ btcsht: 'pano.pano.update' })
   async update(
-    @Param('id') id: number,
-    @Body() data: UpdatePanoDto,
-    @UploadedFile() file: Express.Multer.File,
-  ) {
-    // handle file here
-    console.log(file);
-    const idFile = [1, 2, 3];
-    // then pass file id as array of number to function
-
-    const result = await this.panoService.update(id, data, idFile);
-    return ResponseHelper.response(
-      result.statusCode,
-      result.message,
-      result.data,
+    @Payload() payload: { id: number; data: IPano; idFile: number[] },
+  ): Promise<MSCommunicate> {
+    return await this.panoService.update(
+      payload.id,
+      payload.data,
+      payload.idFile,
     );
   }
 
-  @Delete('/:id')
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth('Token')
-  @ApiOperation({ summary: 'Xoá một pano cụ thể' })
-  @ApiResponse({ status: 200, description: 'Delete one pano successfully' })
-  async delete(@Param('id') id: number) {
-    const result = await this.panoService.delete(id);
-    return ResponseHelper.response(
-      result.statusCode,
-      result.message,
-      result.data,
-    );
+  @MessagePattern({ btcsht: 'pano.pano.delete' })
+  async delete(@Payload() id: number): Promise<MSCommunicate> {
+    return await this.panoService.delete(id);
   }
 }

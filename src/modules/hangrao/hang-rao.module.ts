@@ -1,11 +1,13 @@
 import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { ClientProxyFactory, Transport } from '@nestjs/microservices';
 import { HangRaoController } from './controller/hang-rao.controller';
+import { HangRaoEntity } from './entities/hang-rao.entity';
 import { HangRaoService } from './service/hang-rao.service';
+import { DiemDungEntity } from '../diemdung/entities/diem-dung.entity';
 
 @Module({
-  imports: [JwtModule],
+  imports: [TypeOrmModule.forFeature([HangRaoEntity, DiemDungEntity])],
   controllers: [HangRaoController],
   providers: [
     HangRaoService,

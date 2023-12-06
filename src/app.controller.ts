@@ -1,20 +1,12 @@
-import { Controller, Get, Inject } from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
-import { Observable, firstValueFrom, timeout } from 'rxjs';
+import { Controller } from '@nestjs/common';
+import { MessagePattern } from '@nestjs/microservices';
 
 @Controller('')
 export class AppController {
-  constructor(@Inject('MS_SERVICE') private mSClient: ClientProxy) {}
-
-  @Get('test-ms')
-  async msTest() {
-    const sysData = await firstValueFrom(
-      this.mSClient
-        .send<Observable<any>>({ cmd: 'sys' }, {})
-        .pipe(timeout(2000)),
-    );
+  @MessagePattern({ cmd: 'csht' })
+  async hello(): Promise<any> {
     return {
-      ...sysData,
+      csht: 'Service bao tri co so ha tang is running',
     };
   }
 }

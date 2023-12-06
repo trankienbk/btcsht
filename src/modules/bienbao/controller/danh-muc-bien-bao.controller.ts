@@ -1,144 +1,48 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Param,
-  Patch,
-  Post,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiQuery,
-  ApiResponse,
-  ApiTags,
-} from '@nestjs/swagger';
-import { AuthGuard } from 'src/modules/sys/auth/guards/auth.guard';
-import {
-  CreateDanhMucBienBaoDto,
-  UpdateDanhMucBienBaoDto,
-} from '../dtos/danh-muc-bien-bao.dto';
+import { Controller } from '@nestjs/common';
+import { MessagePattern, Payload } from '@nestjs/microservices';
+import { MSCommunicate } from 'src/utils/ms-output.util';
+import { IDanhMucBienBao } from '../interface/danh-muc-bien-bao.interface';
 import { DanhMucBienBaoService } from '../service/danh-muc-bien-bao.service';
-import responeHelper from '../../../utils/ms-response.utli';
-@Controller('bien-bao/loai-bien-bao')
-@ApiTags('Loại biển Báo')
+
+@Controller('danhmuc/bienbao')
 export class DanhMucBienBaoController {
-  constructor(private danhMucBienBaoService: DanhMucBienBaoService) {}
+  constructor(private readonly danhMucBienBaoService: DanhMucBienBaoService) {}
 
-  @Get()
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth('Token')
-  @ApiQuery({
-    name: 'offset',
-    required: false,
-    description: 'Bỏ qua một số lượng bản ghi nhất định',
-    type: 'number',
-  })
-  @ApiQuery({
-    name: 'limit',
-    required: false,
-    description: 'Giới hạn số bản ghi trong một trang',
-    type: 'number',
-  })
-  @ApiQuery({
-    name: 'name',
-    required: false,
-    description: 'Tên loại biển báo',
-    type: 'string',
-  })
-  @ApiOperation({ summary: 'Danh sách loại biển báo' })
-  @ApiResponse({
-    status: 200,
-    description: 'Get all loai bien bao successfully',
-  })
-  async findManyDanhMucBienBao(
-    @Query('offset') offset: number | null,
-    @Query('limit') limit: number | null,
-    @Query('name') name: string | null,
-  ) {
-    const result = await this.danhMucBienBaoService.findAll(
-      offset,
-      limit,
-      name,
-    );
-    return responeHelper.response(
-      result.statusCode,
-      result.message,
-      result.data,
+  @MessagePattern({ btcsht: 'bien_bao.danh_muc_bien_bao.find_many' })
+  async findMany(
+    @Payload()
+    payload: {
+      offset: number | null;
+      limit: number | null;
+      name: string | null;
+    },
+  ): Promise<MSCommunicate> {
+    return await this.danhMucBienBaoService.findMany(
+      payload.offset,
+      payload.limit,
+      payload.name,
     );
   }
 
-  @Get('/:id')
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth('Token')
-  @ApiOperation({ summary: 'Lấy ra một loại biển báo cụ thể' })
-  @ApiResponse({
-    status: 200,
-    description: 'Get one loai bien bao successfully',
-  })
-  async findDanhMucBienBaoById(@Param('id') id: number) {
-    const result = await this.danhMucBienBaoService.findOneById(id);
-    return responeHelper.response(
-      result.statusCode,
-      result.message,
-      result.data,
-    );
+  @MessagePattern({ btcsht: 'bien_bao.danh_muc_bien_bao.find_one' })
+  async findOneById(@Payload() id: number): Promise<MSCommunicate> {
+    return await this.danhMucBienBaoService.findOneById(id);
   }
 
-  @Post()
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth('Token')
-  @ApiOperation({ summary: 'Thêm mới một loại biển báo' })
-  @ApiResponse({
-    status: 200,
-    description: 'Create one loai bien bao successfully',
-  })
-  async createOneDanhMucBienBao(@Body() payload: CreateDanhMucBienBaoDto) {
-    const result = await this.danhMucBienBaoService.createOne(payload);
-    return responeHelper.response(
-      result.statusCode,
-      result.message,
-      result.data,
-    );
+  @MessagePattern({ btcsht: 'bien_bao.danh_muc_bien_bao.create' })
+  async createOne(@Payload() payload: IDanhMucBienBao): Promise<MSCommunicate> {
+    return await this.danhMucBienBaoService.createOne(payload);
   }
 
-  @Patch('/:id')
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth('Token')
-  @ApiOperation({ summary: 'Cập nhật một loại biển báo' })
-  @ApiResponse({
-    status: 200,
-    description: 'Update one loai bien bao successfully',
-  })
-  async updateOneDanhMucBienBao(
-    @Param('id') id: number,
-    @Body() payload: UpdateDanhMucBienBaoDto,
-  ) {
-    const result = await this.danhMucBienBaoService.updateOne(id, payload);
-    return responeHelper.response(
-      result.statusCode,
-      result.message,
-      result.data,
-    );
+  @MessagePattern({ btcsht: 'bien_bao.danh_muc_bien_bao.update' })
+  async updateOne(
+    @Payload() payload: { id: number; data: IDanhMucBienBao },
+  ): Promise<MSCommunicate> {
+    return await this.danhMucBienBaoService.updateOne(payload.id, payload.data);
   }
 
-  @Delete('/:id')
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth('Token')
-  @ApiOperation({ summary: 'Xoá một loại biển báo' })
-  @ApiResponse({
-    status: 200,
-    description: 'Delete one loai bien bao successfully',
-  })
-  async softDeleteOneDanhMucBienBao(@Param('id') id: number) {
-    const result = await this.danhMucBienBaoService.softDelete(id);
-    return responeHelper.response(
-      result.statusCode,
-      result.message,
-      result.data,
-    );
+  @MessagePattern({ btcsht: 'bien_bao.danh_muc_bien_bao.delete' })
+  async deleteOne(@Payload() id: number): Promise<MSCommunicate> {
+    return await this.danhMucBienBaoService.deleteOne(id);
   }
 }

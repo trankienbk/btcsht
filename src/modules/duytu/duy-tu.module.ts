@@ -1,26 +1,13 @@
 import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
-import { ClientProxyFactory, Transport } from '@nestjs/microservices';
-import { DanhMucDuyTuController } from './controller/loai-duy-tu.controller';
-import { LoaiDuyTuService } from './service/loai-duy-tu.service';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { DanhMucDuyTuController } from './controller/danh-muc-duy-tu.controller';
+import { DanhMucDuyTuService } from './service/danh-muc-duy-tu.service';
+import { DanhMucDuyTuEntity } from './entities/danh-muc-duy-tu.entity';
 
 @Module({
-  imports: [JwtModule],
+  imports: [TypeOrmModule.forFeature([DanhMucDuyTuEntity])],
   controllers: [DanhMucDuyTuController],
-  providers: [
-    LoaiDuyTuService,
-    {
-      provide: 'MS_SERVICE',
-      useFactory: () =>
-        ClientProxyFactory.create({
-          transport: Transport.REDIS,
-          options: {
-            host: process.env.REDIS_HOST,
-            port: parseInt(process.env.REDIS_PORT),
-          },
-        }),
-    },
-  ],
-  exports: [LoaiDuyTuService],
+  providers: [DanhMucDuyTuService],
+  exports: [DanhMucDuyTuService],
 })
 export class DuyTuModule {}

@@ -1,35 +1,26 @@
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { NestFactory } from '@nestjs/core';
+import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import 'reflect-metadata';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { cors: true });
-  app.useGlobalPipes(
-    new ValidationPipe({
-      disableErrorMessages: false, // set true to hide detailed error message
-      whitelist: false, // set true to strip params which are not in DTO
-      transform: false, // set true if you want DTO to convert params to DTO class by default its false
-    }),
+  const app = await NestFactory.createMicroservice<MicroserviceOptions>(
+    AppModule,
+    {
+      transport: Transport.REDIS,
+      options: {
+        host: process.env.REDIS_HOST,
+        port: parseInt(process.env.REDIS_PORT),
+      },
+    },
   );
-  const configService = app.get(ConfigService);
-  const PORT = configService.get('PORT' as never);
-  const config = new DocumentBuilder()
-    .setTitle('Phần mềm giao thông công cộng')
-    .setDescription('API documentation')
-    .setVersion('1.0')
-    .addBearerAuth({ in: 'header', type: 'http' }, 'Token')
-    .build();
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, document);
-
-  await app.listen(PORT);
+  app.useGlobalPipes(new ValidationPipe());
+  await app.listen();
   console.log(
     `Environment ${
       process.env.NODE_ENV || 'development'
-    } - Server is running at port ${PORT || 3100}`,
+    } - Bao tri co so ha tang service is running`,
   );
 }
 bootstrap();

@@ -1,15 +1,30 @@
 import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
-import { ClientProxyFactory, Transport } from '@nestjs/microservices';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { DanhMucNhaChoController } from './controller/danh-muc-nha-cho.controller';
 import { DanhMucNhaChoService } from './service/danh-muc-nha-cho.service';
-import { NhaChoController } from './controller/nha-cho.controller';
+import { DanhMucNhaChoEntity } from './entities/danh-muc-nha-cho.entity';
+import { NhaChoEntity } from './entities/nha-cho.entity';
+import { ClientProxyFactory, Transport } from '@nestjs/microservices';
 import { NhaChoService } from './service/nha-cho.service';
-import { DuyTuNhaChoController } from './controller/duy-tu-nha-cho.controller';
+import { NhaChoController } from './controller/nha-cho.controller';
+import { TinhTrangEntity } from '../tinhtrang/entities/tinh-trang.entity';
+import { DiemDungEntity } from '../diemdung/entities/diem-dung.entity';
+import { DanhMucDuyTuEntity } from '../duytu/entities/danh-muc-duy-tu.entity';
+import { DuyTuNhaChoEntity } from './entities/duy-tu-nha-cho.entity';
 import { DuyTuNhaChoService } from './service/duy-tu-nha-cho.service';
+import { DuyTuNhaChoController } from './controller/duy-tu-nha-cho.controller';
 
 @Module({
-  imports: [JwtModule],
+  imports: [
+    TypeOrmModule.forFeature([
+      DanhMucNhaChoEntity,
+      NhaChoEntity,
+      TinhTrangEntity,
+      DiemDungEntity,
+      DanhMucDuyTuEntity,
+      DuyTuNhaChoEntity,
+    ]),
+  ],
   controllers: [
     DanhMucNhaChoController,
     NhaChoController,

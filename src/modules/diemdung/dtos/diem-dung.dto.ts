@@ -10,7 +10,7 @@ export class CreateDiemDungDto {
     message: ResponseHelper.responseValidate(
       Subject.DIEM_DUNG,
       Content.REQUIRED,
-      Field.CODE,
+      "Field.CODE",
     ),
   })
   @ApiProperty({
@@ -80,7 +80,7 @@ export class CreateDiemDungDto {
     message: ResponseHelper.responseValidate(
       Subject.DIEM_DUNG,
       Content.REQUIRED,
-      Field.NGAY_SU_DUNG,
+      "Field.NGAY_SU_DUNG",
     ),
   })
   @ApiProperty({
@@ -100,7 +100,7 @@ export class CreateDiemDungDto {
     message: ResponseHelper.responseValidate(
       Subject.DIEM_DUNG,
       Content.REQUIRED,
-      Field.DIA_CHI,
+      "Field.DIA_CHI",
     ),
   })
   diaChi: string;

@@ -1,124 +1,56 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Param,
-  Patch,
-  Post,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiQuery,
-  ApiResponse,
-  ApiTags,
-} from '@nestjs/swagger';
-import { AuthGuard } from 'src/modules/sys/auth/guards/auth.guard';
-import {
-  CreateHeThongChieuSangDto,
-  UpdateHeThongChieuSangDto,
-} from '../dtos/he-thong-chieu-sang.dto';
+import { Controller } from '@nestjs/common';
+import { MessagePattern, Payload } from '@nestjs/microservices';
+import { MSCommunicate } from 'src/utils/ms-output.util';
+import { IDanhMucHeThongChieuSang } from '../interface/he-thong-chieu-sang.interface';
 import { HeThongChieuSangService } from '../service/he-thong-chieu-sang.service';
-import func from '../../../utils/ms-response.utli';
-@Controller('he-thong-chieu-sang/doi-tuong')
-@ApiTags('Hệ thống chiếu sáng')
-export class HeThongChieuSangController {
-  constructor(private heThongChieuSangService: HeThongChieuSangService) {}
 
-  @Get()
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth('Token')
-  @ApiQuery({
-    name: 'offset',
-    required: false,
-    description: 'Bỏ qua một số lượng bản ghi nhất định',
-    type: 'number',
-  })
-  @ApiQuery({
-    name: 'limit',
-    required: false,
-    description: 'Giới hạn số bản ghi trong một trang',
-    type: 'number',
-  })
-  @ApiQuery({
-    name: 'name',
-    required: false,
-    description: 'Tên hệ thống chiếu sáng',
-    type: 'string',
-  })
-  @ApiOperation({ summary: 'Danh sách hệ thống chiếu sáng' })
-  @ApiResponse({
-    status: 200,
-    description: 'Get all hệ thống chiếu sáng successfully',
+@Controller('he-thong-chieu-sang/doi-tuong')
+export class HeThongChieuSangController {
+  constructor(
+    private readonly heThongChieuSangService: HeThongChieuSangService,
+  ) {}
+
+  @MessagePattern({
+    btcsht: 'he_thong_chieu_sang.he_thong_chieu_sang.find_many',
   })
   async findMany(
-    @Query('offset') offset: number | null,
-    @Query('limit') limit: number | null,
-    @Query('name') name: string | null,
-  ) {
-    const result = await this.heThongChieuSangService.findMany(
-      offset,
-      limit,
-      name,
+    @Payload()
+    payload: {
+      offset: number | null;
+      limit: number | null;
+      name: string | null;
+    },
+  ): Promise<MSCommunicate> {
+    return await this.heThongChieuSangService.findMany(
+      payload.offset,
+      payload.limit,
+      payload.name,
     );
-    return func.response(result.statusCode, result.message, result.data);
   }
 
-  @Get('/:id')
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth('Token')
-  @ApiOperation({ summary: 'Lấy ra một hệ thống chiếu sáng cụ thể' })
-  @ApiResponse({
-    status: 200,
-    description: 'Get he thong chieu sang successfully',
+  @MessagePattern({
+    btcsht: 'he_thong_chieu_sang.he_thong_chieu_sang.find_one',
   })
-  async findOne(@Param('id') id: number) {
-    const result = await this.heThongChieuSangService.findOne(id);
-    return func.response(result.statusCode, result.message, result.data);
+  async findOne(@Payload() id: number): Promise<MSCommunicate> {
+    return await this.heThongChieuSangService.findOne(id);
   }
 
-  @Post()
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth('Token')
-  @ApiOperation({ summary: 'Thêm mới hệ thống chiếu sáng' })
-  @ApiResponse({
-    status: 201,
-    description: 'Create he thong chieu sang successfully',
-  })
-  async create(@Body() payload: CreateHeThongChieuSangDto) {
-    const result = await this.heThongChieuSangService.create(payload);
-    return func.response(result.statusCode, result.message, result.data);
+  @MessagePattern({ btcsht: 'he_thong_chieu_sang.he_thong_chieu_sang.create' })
+  async create(
+    @Payload() payload: IDanhMucHeThongChieuSang,
+  ): Promise<MSCommunicate> {
+    return await this.heThongChieuSangService.create(payload);
   }
 
-  @Patch('/:id')
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth('Token')
-  @ApiOperation({ summary: 'Cập nhật hệ thống chiếu sáng' })
-  @ApiResponse({
-    status: 200,
-    description: 'Update he thong chieu sang successfully',
-  })
+  @MessagePattern({ btcsht: 'he_thong_chieu_sang.he_thong_chieu_sang.update' })
   async update(
-    @Param('id') id: number,
-    @Body() payload: UpdateHeThongChieuSangDto,
-  ) {
-    const result = await this.heThongChieuSangService.update(id, payload);
-    return func.response(result.statusCode, result.message, result.data);
+    @Payload() payload: { id: number; data: IDanhMucHeThongChieuSang },
+  ): Promise<MSCommunicate> {
+    return await this.heThongChieuSangService.update(payload.id, payload.data);
   }
 
-  @Delete('/:id')
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth('Token')
-  @ApiOperation({ summary: 'Xoá hệ thống chiếu sáng' })
-  @ApiResponse({
-    status: 200,
-    description: 'Delete he thong chieu sang successfully',
-  })
-  async delete(@Param('id') id: number) {
-    const result = await this.heThongChieuSangService.delete(id);
-    return func.response(result.statusCode, result.message, result.data);
+  @MessagePattern({ btcsht: 'he_thong_chieu_sang.he_thong_chieu_sang.delete' })
+  async delete(@Payload() id: number): Promise<MSCommunicate> {
+    return await this.heThongChieuSangService.delete(id);
   }
 }

@@ -6,7 +6,8 @@ export enum Content {
   // Optional validate
   REQUIRED = 'required',
   NOT_FOUND = 'not_found',
+  EXIST = 'existed',
+  MIN_LENGTH_2 = 'min_length_2',
+  DUBLICATE = 'dublicate',
   INVALID = 'invalid',
-  UNAUTHORIZATION = 'unauthorize',
-  NOT_NULL = 'not_null',
 }

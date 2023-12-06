@@ -1,26 +1,18 @@
 import { Module } from '@nestjs/common';
-import { ClientProxyFactory, Transport } from '@nestjs/microservices';
-import { JwtModule } from '@nestjs/jwt';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { DuongController } from './controller/duong.controller';
-import { DuongService } from './service/duong.service';
+import { DuongService } from './services/duong.service';
+import { HttpModule } from '@nestjs/axios';
 
 @Module({
-  imports: [JwtModule],
-  controllers: [DuongController],
-  providers: [
-    DuongService,
-    {
-      provide: 'MS_SERVICE',
-      useFactory: () =>
-        ClientProxyFactory.create({
-          transport: Transport.REDIS,
-          options: {
-            host: process.env.REDIS_HOST,
-            port: parseInt(process.env.REDIS_PORT),
-          },
-        }),
-    },
+  imports: [
+    TypeOrmModule.forFeature([]),
+    HttpModule.register({
+      timeout: 100000,
+    }),
   ],
+  controllers: [DuongController],
+  providers: [DuongService],
   exports: [DuongService],
 })
 export class DuongModule {}

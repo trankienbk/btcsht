@@ -1,11 +1,13 @@
 import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { ClientProxyFactory, Transport } from '@nestjs/microservices';
 import { BienChiDanController } from './controller/bien-chi-dan.controller';
+import { BienChiDanEntity } from './entities/bien-chi-dan.entity';
 import { BienChiDanService } from './service/bien-chi-dan.service';
+import { DiemDungEntity } from '../diemdung/entities/diem-dung.entity';
 
 @Module({
-  imports: [JwtModule],
+  imports: [TypeOrmModule.forFeature([BienChiDanEntity, DiemDungEntity])],
   controllers: [BienChiDanController],
   providers: [
     BienChiDanService,

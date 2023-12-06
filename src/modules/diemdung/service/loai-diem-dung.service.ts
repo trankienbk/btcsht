@@ -1,46 +1,30 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
-import { firstValueFrom, timeout } from 'rxjs';
+import { HttpStatus, Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 import { MSCommunicate } from 'src/utils/ms-output.util';
-import { MS_TIME_OUT } from 'src/common/constants/ms.constants';
-import { UpdateDiemDungParentDto } from '../dtos/loai-diem-dung.dto';
+import { Repository } from 'typeorm';
+import { LoaiDiemDungEntity } from '../entities/loai-diem-dung.entity';
+import { Subject } from 'src/common/message/subject.message';
+import { Field } from 'src/common/message/field.message';
+import { Content } from 'src/common/message/content.message';
+
 @Injectable()
 export class DanhMucDiemDungService {
-  constructor(@Inject('MS_SERVICE') private readonly mSClient: ClientProxy) {}
+  constructor(
+    @InjectRepository(LoaiDiemDungEntity)
+    private loaiDiemDungRepository: Repository<LoaiDiemDungEntity>,
+  ) {}
 
-  async findAllDiemDung() {
-    const res: MSCommunicate = await firstValueFrom(
-      this.mSClient
-        .send({ cmd: 'diem_dung.danh_muc_diem_dung.find_many' }, {})
-        .pipe(timeout(MS_TIME_OUT)),
-    );
-    return res;
-  }
+  async findManyLoaiDiemDung(): Promise<MSCommunicate> {
+    const query = this.loaiDiemDungRepository.createQueryBuilder('type');
 
-  async findAllDoiTuong() {
-    const res: MSCommunicate = await firstValueFrom(
-      this.mSClient
-        .send({ cmd: 'diem_dung.danh_muc_doi_tuong.findMany' }, {})
-        .pipe(timeout(MS_TIME_OUT)),
-    );
-    return res;
-  }
+    const loaiDiemDung: LoaiDiemDungEntity[] = await query.getMany();
 
-  async findAllDoiTuongCauHinh(id: number) {
-    const res: MSCommunicate = await firstValueFrom(
-      this.mSClient
-        .send({ cmd: 'diem_dung.loai_diem_dung_cau_hinh.find_many' }, id)
-        .pipe(timeout(MS_TIME_OUT)),
+    return new MSCommunicate(
+      HttpStatus.OK,
+      Content.SUCCESSFULLY,
+      Subject.BUS_STOP_TYPE,
+      loaiDiemDung,
+      Field.READ,
     );
-    return res;
-  }
-
-  async updateDiemDungCauHinh(payload: UpdateDiemDungParentDto) {
-    const res: MSCommunicate = await firstValueFrom(
-      this.mSClient
-        .send({ cmd: 'diem_dung.loai_diem_dung_cau_hinh.update_many' }, payload)
-        .pipe(timeout(MS_TIME_OUT)),
-    );
-    return res;
   }
 }

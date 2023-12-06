@@ -1,59 +1,190 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
-import { firstValueFrom, timeout } from 'rxjs';
+import { HttpStatus, Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 import { MSCommunicate } from 'src/utils/ms-output.util';
-import { CreateHangRaoDto, UpdateHangRaoDto } from '../dtos/hang-rao.dto';
-import { MS_TIME_OUT } from 'src/common/constants/ms.constants';
+import { Like, Not, Repository } from 'typeorm';
+import { HangRaoEntity } from '../entities/hang-rao.entity';
+import { IDanhMucHangRao } from '../interface/hang-rao.interface';
+import { Subject } from 'src/common/message/subject.message';
+import { Content } from 'src/common/message/content.message';
+import { Field } from 'src/common/message/field.message';
+import { DiemDungEntity } from 'src/modules/diemdung/entities/diem-dung.entity';
+
 @Injectable()
 export class HangRaoService {
-  constructor(@Inject('MS_SERVICE') private readonly mSClient: ClientProxy) {}
+  constructor(
+    @InjectRepository(HangRaoEntity)
+    private hangRaoRepository: Repository<HangRaoEntity>,
+    @InjectRepository(DiemDungEntity)
+    private diemDungRepository: Repository<DiemDungEntity>,
+  ) {}
 
   async findMany(
     offset: number | null,
     limit: number | null,
     name: string | null,
-  ) {
-    const res: MSCommunicate = await firstValueFrom(
-      this.mSClient
-        .send(
-          { btcsht: 'hang_rao.hang_rao.find_many' },
-          { offset, limit, name },
-        )
-        .pipe(timeout(MS_TIME_OUT)),
+  ): Promise<MSCommunicate> {
+    const HangRao = await this.hangRaoRepository.find({
+      relations: {
+        diemDungHangRao: true,
+      },
+      where: {
+        name: Like(`%${name ?? ''}%`),
+      },
+      skip: limit && offset,
+      take: limit,
+    });
+
+    const total = await this.hangRaoRepository.count();
+    const data = {
+      hangRao: HangRao,
+      total: total,
+    };
+    return new MSCommunicate(
+      HttpStatus.OK,
+      Content.SUCCESSFULLY,
+      Subject.FENCE,
+      data,
+      Field.READ,
     );
-    return res;
   }
 
-  async findOne(id: number) {
-    const res: MSCommunicate = await firstValueFrom(
-      this.mSClient
-        .send({ btcsht: 'hang_rao.hang_rao.find_one' }, id)
-        .pipe(timeout(MS_TIME_OUT)),
+  async findOne(id: number): Promise<MSCommunicate> {
+    const hangRao = await this.hangRaoRepository.findOne({
+      relations: {
+        diemDungHangRao: true,
+      },
+      where: { id: id },
+    });
+    if (!hangRao) {
+      return new MSCommunicate(
+        HttpStatus.ACCEPTED,
+        Content.NOT_FOUND,
+        Subject.FENCE,
+        null,
+        Field.READ,
+      );
+    }
+    return new MSCommunicate(
+      HttpStatus.OK,
+      Content.SUCCESSFULLY,
+      Subject.FENCE,
+      hangRao,
+      Field.READ,
     );
-    return res;
   }
 
-  async create(payload: CreateHangRaoDto) {
-    const res: MSCommunicate = await firstValueFrom(
-      this.mSClient.send({ btcsht: 'hang_rao.hang_rao.create' }, payload),
+  async create(payload: IDanhMucHangRao): Promise<MSCommunicate> {
+    const exist = await this.hangRaoRepository.findOne({
+      where: { name: payload.name },
+    });
+    if (exist) {
+      return new MSCommunicate(
+        HttpStatus.ACCEPTED,
+        Content.EXIST,
+        Subject.FENCE,
+        null,
+        Field.NAME,
+      );
+    }
+
+    const diemDung = await this.diemDungRepository.findOne({
+      where: { id: payload.diemDungId },
+    });
+
+    if (!diemDung) {
+      return new MSCommunicate(
+        HttpStatus.ACCEPTED,
+        Content.NOT_FOUND,
+        Subject.FENCE,
+        null,
+        Field.DIEM_DUNG_ID,
+      );
+    }
+
+    const hangRao = await this.hangRaoRepository.save({
+      name: payload.name,
+      description: payload.description,
+      diemDungHangRao: {
+        id: payload.diemDungId,
+      },
+    });
+
+    return new MSCommunicate(
+      HttpStatus.CREATED,
+      Content.SUCCESSFULLY,
+      Subject.FENCE,
+      hangRao,
+      Field.CREATE,
     );
-    return res;
   }
 
-  async update(id: number, payload: UpdateHangRaoDto) {
-    const res: MSCommunicate = await firstValueFrom(
-      this.mSClient.send(
-        { btcsht: 'hang_rao.hang_rao.update' },
-        { id: id, data: payload },
-      ),
+  async update(id: number, payload: IDanhMucHangRao): Promise<MSCommunicate> {
+    const exist = await this.hangRaoRepository.findOne({
+      where: { name: payload.name, id: Not(id) },
+    });
+    if (exist) {
+      return new MSCommunicate(
+        HttpStatus.ACCEPTED,
+        Content.EXIST,
+        Subject.FENCE,
+        null,
+        Field.NAME,
+      );
+    }
+    const diemDung = await this.diemDungRepository.findOne({
+      where: { id: payload.diemDungId },
+    });
+
+    if (!diemDung) {
+      return new MSCommunicate(
+        HttpStatus.ACCEPTED,
+        Content.NOT_FOUND,
+        Subject.FENCE,
+        null,
+        Field.DIEM_DUNG_ID,
+      );
+    }
+
+    await this.hangRaoRepository.update(
+      { id },
+      {
+        name: payload.name,
+        description: payload.description,
+        diemDungHangRao: {
+          id: payload.diemDungId,
+        },
+      },
     );
-    return res;
+
+    return new MSCommunicate(
+      HttpStatus.OK,
+      Content.SUCCESSFULLY,
+      Subject.FENCE,
+      payload,
+      Field.UPDATE,
+    );
   }
 
-  async delete(id: number) {
-    const res: MSCommunicate = await firstValueFrom(
-      this.mSClient.send({ btcsht: 'hang_rao.hang_rao.delete' }, id),
+  async delete(id: number): Promise<MSCommunicate> {
+    const exist = await this.hangRaoRepository.findOne({
+      where: { id: id },
+    });
+    if (!exist) {
+      return new MSCommunicate(
+        HttpStatus.ACCEPTED,
+        Content.NOT_FOUND,
+        Subject.FENCE,
+        null,
+        Field.DELETE,
+      );
+    }
+    await this.hangRaoRepository.softDelete(id);
+    return new MSCommunicate(
+      HttpStatus.OK,
+      Content.SUCCESSFULLY,
+      Subject.FENCE,
+      id,
+      Field.DELETE,
     );
-    return res;
   }
 }

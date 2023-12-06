@@ -1,99 +1,48 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Param,
-  Patch,
-  Post,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiQuery,
-  ApiResponse,
-  ApiTags,
-} from '@nestjs/swagger';
-import { AuthGuard } from 'src/modules/sys/auth/guards/auth.guard';
-import { CreateHangRaoDto, UpdateHangRaoDto } from '../dtos/hang-rao.dto';
+import { Controller } from '@nestjs/common';
+import { MessagePattern, Payload } from '@nestjs/microservices';
+import { MSCommunicate } from 'src/utils/ms-output.util';
+import { IDanhMucHangRao } from '../interface/hang-rao.interface';
 import { HangRaoService } from '../service/hang-rao.service';
-import func from '../../../utils/ms-response.utli';
+
 @Controller('hang-rao/doi-tuong')
-@ApiTags('Hàng rào')
 export class HangRaoController {
-  constructor(private hangRaoService: HangRaoService) {}
+  constructor(private readonly hangRaoService: HangRaoService) {}
 
-  @Get()
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth('Token')
-  @ApiQuery({
-    name: 'offset',
-    required: false,
-    description: 'Bỏ qua một số lượng bản ghi nhất định',
-    type: 'number',
-  })
-  @ApiQuery({
-    name: 'limit',
-    required: false,
-    description: 'Giới hạn số bản ghi trong một trang',
-    type: 'number',
-  })
-  @ApiQuery({
-    name: 'name',
-    required: false,
-    description: 'Tên hàng rào',
-    type: 'string',
-  })
-  @ApiOperation({ summary: 'Danh sách hàng rào' })
-  @ApiResponse({ status: 200, description: 'Get all hàng rào successfully' })
+  @MessagePattern({ btcsht: 'hang_rao.hang_rao.find_many' })
   async findMany(
-    @Query('offset') offset: number | null,
-    @Query('limit') limit: number | null,
-    @Query('name') name: string | null,
-  ) {
-    const result = await this.hangRaoService.findMany(offset, limit, name);
-    return func.response(result.statusCode, result.message, result.data);
+    @Payload()
+    payload: {
+      offset: number | null;
+      limit: number | null;
+      name: string | null;
+    },
+  ): Promise<MSCommunicate> {
+    return await this.hangRaoService.findMany(
+      payload.offset,
+      payload.limit,
+      payload.name,
+    );
   }
 
-  @Get('/:id')
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth('Token')
-  @ApiOperation({ summary: 'Lấy ra một hàng rào cụ thể' })
-  @ApiResponse({ status: 200, description: 'Get cay xanh successfully' })
-  async findOne(@Param('id') id: number) {
-    const result = await this.hangRaoService.findOne(id);
-    return func.response(result.statusCode, result.message, result.data);
+  @MessagePattern({ btcsht: 'hang_rao.hang_rao.find_one' })
+  async findOne(@Payload() id: number): Promise<MSCommunicate> {
+    return await this.hangRaoService.findOne(id);
   }
 
-  @Post()
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth('Token')
-  @ApiOperation({ summary: 'Thêm mới hàng rào' })
-  @ApiResponse({ status: 201, description: 'Create cay xanh successfully' })
-  async create(@Body() payload: CreateHangRaoDto) {
-    const result = await this.hangRaoService.create(payload);
-    return func.response(result.statusCode, result.message, result.data);
+  @MessagePattern({ btcsht: 'hang_rao.hang_rao.create' })
+  async create(@Payload() payload: IDanhMucHangRao): Promise<MSCommunicate> {
+    return await this.hangRaoService.create(payload);
   }
 
-  @Patch('/:id')
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth('Token')
-  @ApiOperation({ summary: 'Cập nhật hàng rào' })
-  @ApiResponse({ status: 200, description: 'Update cay xanh successfully' })
-  async update(@Param('id') id: number, @Body() payload: UpdateHangRaoDto) {
-    const result = await this.hangRaoService.update(id, payload);
-    return func.response(result.statusCode, result.message, result.data);
+  @MessagePattern({ btcsht: 'hang_rao.hang_rao.update' })
+  async update(
+    @Payload() payload: { id: number; data: IDanhMucHangRao },
+  ): Promise<MSCommunicate> {
+    return await this.hangRaoService.update(payload.id, payload.data);
   }
 
-  @Delete('/:id')
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth('Token')
-  @ApiOperation({ summary: 'Xoá hàng rào' })
-  @ApiResponse({ status: 200, description: 'Delete cay xanh successfully' })
-  async delete(@Param('id') id: number) {
-    const result = await this.hangRaoService.delete(id);
-    return func.response(result.statusCode, result.message, result.data);
+  @MessagePattern({ btcsht: 'hang_rao.hang_rao.delete' })
+  async delete(@Payload() id: number): Promise<MSCommunicate> {
+    return await this.hangRaoService.delete(id);
   }
 }

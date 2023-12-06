@@ -1,68 +1,152 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
-import { firstValueFrom, timeout } from 'rxjs';
+import { HttpStatus, Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 import { MSCommunicate } from 'src/utils/ms-output.util';
-import {
-  CreateDanhMucPanoDto,
-  UpdateDanhMucPanoDto,
-} from '../dtos/danh-muc-pano.dto';
-import { MS_TIME_OUT } from 'src/common/constants/ms.constants';
+import { Like, Not, Repository } from 'typeorm';
+import { DanhMucPanoEntity } from '../entities/danh-muc-pano.entity';
+import { IDanhMucPano } from '../interface/danh-muc-pano.interface';
+import { Content } from 'src/common/message/content.message';
+import { Subject } from 'src/common/message/subject.message';
+import { Field } from 'src/common/message/field.message';
+
 @Injectable()
 export class DanhMucPanoService {
-  constructor(@Inject('MS_SERVICE') private readonly mSClient: ClientProxy) {}
+  constructor(
+    @InjectRepository(DanhMucPanoEntity)
+    private loaiPanoRepository: Repository<DanhMucPanoEntity>,
+  ) {}
 
   async findMany(
     offset: number | null,
     limit: number | null,
     name: string | null,
-  ) {
-    const res: MSCommunicate = await firstValueFrom(
-      this.mSClient
-        .send(
-          { btcsht: 'pano.danh_muc_pano.find_many' },
-          { offset, limit, name },
-        )
-        .pipe(timeout(MS_TIME_OUT)),
+  ): Promise<MSCommunicate> {
+    const loaiPano = await this.loaiPanoRepository.find({
+      where: { name: Like(`%${name ?? ''}%`) },
+      skip: limit && offset,
+      take: limit,
+    });
+
+    const total = await this.loaiPanoRepository.count();
+    const data = {
+      panoType: loaiPano,
+      total: total,
+    };
+    return new MSCommunicate(
+      HttpStatus.OK,
+      Content.SUCCESSFULLY,
+      Subject.PANO_TYPE,
+      data,
+      Field.READ,
     );
-    return res;
   }
 
-  async findOne(id: number) {
-    const res: MSCommunicate = await firstValueFrom(
-      this.mSClient
-        .send({ btcsht: 'pano.danh_muc_pano.find_one' }, id)
-        .pipe(timeout(MS_TIME_OUT)),
+  async findOne(id: number): Promise<MSCommunicate> {
+    const paintLine = await this.loaiPanoRepository.findOne({
+      where: { id: id },
+    });
+    if (!paintLine) {
+      return new MSCommunicate(
+        HttpStatus.ACCEPTED,
+        Content.NOT_FOUND,
+        Subject.PANO_TYPE,
+        null,
+        Field.READ,
+      );
+    }
+    return new MSCommunicate(
+      HttpStatus.OK,
+      Content.SUCCESSFULLY,
+      Subject.PANO_TYPE,
+      paintLine,
+      Field.READ,
     );
-    return res;
   }
 
-  async create(payload: CreateDanhMucPanoDto) {
-    const res: MSCommunicate = await firstValueFrom(
-      this.mSClient
-        .send({ btcsht: 'pano.danh_muc_pano.create' }, payload)
-        .pipe(timeout(MS_TIME_OUT)),
+  async create(payload: IDanhMucPano): Promise<MSCommunicate> {
+    const exist = await this.loaiPanoRepository.findOne({
+      where: { name: payload.name },
+    });
+    if (exist) {
+      return new MSCommunicate(
+        HttpStatus.ACCEPTED,
+        Content.EXIST,
+        Subject.PANO_TYPE,
+        null,
+        Field.NAME,
+      );
+    }
+
+    const paintLine = await this.loaiPanoRepository.save(payload);
+
+    return new MSCommunicate(
+      HttpStatus.CREATED,
+      Content.SUCCESSFULLY,
+      Subject.PANO_TYPE,
+      paintLine,
+      Field.CREATE,
     );
-    return res;
   }
 
-  async update(id: number, payload: UpdateDanhMucPanoDto) {
-    const res: MSCommunicate = await firstValueFrom(
-      this.mSClient
-        .send(
-          { btcsht: 'pano.danh_muc_pano.update' },
-          { id: id, data: payload },
-        )
-        .pipe(timeout(MS_TIME_OUT)),
+  async update(id: number, payload: IDanhMucPano): Promise<MSCommunicate> {
+    const exist = await this.loaiPanoRepository.findOne({
+      where: { id: id },
+    });
+    if (!exist) {
+      return new MSCommunicate(
+        HttpStatus.ACCEPTED,
+        Content.NOT_FOUND,
+        Subject.PANO_TYPE,
+        null,
+        Field.UPDATE,
+      );
+    }
+
+    const existName = await this.loaiPanoRepository.findOne({
+      where: { name: payload.name, id: Not(exist.id) },
+    });
+    if (existName) {
+      return new MSCommunicate(
+        HttpStatus.ACCEPTED,
+        Content.EXIST,
+        Subject.PANO_TYPE,
+        null,
+        Field.NAME,
+      );
+    }
+
+    const paintLine = await this.loaiPanoRepository.save({
+      id: exist.id,
+      ...payload,
+    });
+    return new MSCommunicate(
+      HttpStatus.OK,
+      Content.SUCCESSFULLY,
+      Subject.PANO_TYPE,
+      paintLine,
+      Field.UPDATE,
     );
-    return res;
   }
 
-  async delete(id: number) {
-    const res: MSCommunicate = await firstValueFrom(
-      this.mSClient
-        .send({ btcsht: 'pano.danh_muc_pano.delete' }, id)
-        .pipe(timeout(MS_TIME_OUT)),
+  async delete(id: number): Promise<MSCommunicate> {
+    const exist = await this.loaiPanoRepository.findOne({
+      where: { id: id },
+    });
+    if (!exist) {
+      return new MSCommunicate(
+        HttpStatus.ACCEPTED,
+        Content.NOT_FOUND,
+        Subject.PANO_TYPE,
+        null,
+        Field.DELETE,
+      );
+    }
+    await this.loaiPanoRepository.softDelete(id);
+    return new MSCommunicate(
+      HttpStatus.OK,
+      Content.SUCCESSFULLY,
+      Subject.PANO_TYPE,
+      id,
+      Field.DELETE,
     );
-    return res;
   }
 }

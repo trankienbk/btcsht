@@ -1,11 +1,13 @@
 import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { ClientProxyFactory, Transport } from '@nestjs/microservices';
 import { CayXanhController } from './controller/cay-xanh.controller';
+import { CayXanhEntity } from './entities/cay-xanh.entity';
 import { CayXanhService } from './service/cay-xanh.service';
+import { DiemDungEntity } from '../diemdung/entities/diem-dung.entity';
 
 @Module({
-  imports: [JwtModule],
+  imports: [TypeOrmModule.forFeature([CayXanhEntity, DiemDungEntity])],
   controllers: [CayXanhController],
   providers: [
     CayXanhService,

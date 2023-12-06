@@ -1,19 +1,28 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
-import { firstValueFrom, timeout } from 'rxjs';
+import { HttpStatus, Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 import { MSCommunicate } from 'src/utils/ms-output.util';
-import { MS_TIME_OUT } from 'src/common/constants/ms.constants';
+import { Repository } from 'typeorm';
+import { LoaiTinhTrangEntity } from '../entities/loai-tinh-trang.entity';
+import { Content } from 'src/common/message/content.message';
+import { Subject } from 'src/common/message/subject.message';
+import { Field } from 'src/common/message/field.message';
 
 @Injectable()
 export class LoaiTinhTrangService {
-  constructor(@Inject('MS_SERVICE') private readonly mSClient: ClientProxy) {}
+  constructor(
+    @InjectRepository(LoaiTinhTrangEntity)
+    private loaiTinhTrangRepository: Repository<LoaiTinhTrangEntity>,
+  ) {}
 
-  async findManyLoaiTinhTrang() {
-    const res: MSCommunicate = await firstValueFrom(
-      this.mSClient
-        .send({ btcsht: 'tinh_trang.loai_tinh_trang.find_many' }, {})
-        .pipe(timeout(MS_TIME_OUT)),
+  async findManyLoaiTinhTrang(): Promise<MSCommunicate> {
+    const result: LoaiTinhTrangEntity[] =
+      await this.loaiTinhTrangRepository.find();
+    return new MSCommunicate(
+      HttpStatus.OK,
+      Content.SUCCESSFULLY,
+      Subject.TINH_TRANG,
+      result,
+      Field.READ_MANY,
     );
-    return res;
   }
 }

@@ -1,125 +1,48 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Param,
-  Patch,
-  Post,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiQuery,
-  ApiResponse,
-  ApiTags,
-} from '@nestjs/swagger';
-import { AuthGuard } from 'src/modules/sys/auth/guards/auth.guard';
-import {
-  CreateDuyTuNhaChoDto,
-  UpdateDuyTuNhaChoDto,
-} from '../dtos/duy-tu-nha-cho.dto';
+import { Controller } from '@nestjs/common';
+import { MessagePattern, Payload } from '@nestjs/microservices';
+import { MSCommunicate } from 'src/utils/ms-output.util';
+import { IDuyTuNhaCho } from '../interface/duy-tu-nha_cho.interface';
 import { DuyTuNhaChoService } from '../service/duy-tu-nha-cho.service';
-import ResponseHelper from 'src/utils/ms-response.utli';
+
 @Controller('nha-cho/duy-tu')
-@ApiTags('Duy tu nhà chờ')
 export class DuyTuNhaChoController {
-  constructor(private duyTuNhaChoService: DuyTuNhaChoService) {}
+  constructor(private readonly duyTuNhaChoService: DuyTuNhaChoService) {}
 
-  @Get()
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth('Token')
-  @ApiQuery({
-    name: 'offset',
-    required: false,
-    description: 'Bỏ qua một số lượng bản ghi nhất định',
-    type: 'number',
-  })
-  @ApiQuery({
-    name: 'limit',
-    required: false,
-    description: 'Giới hạn số bản ghi trong một trang',
-    type: 'number',
-  })
-  @ApiQuery({
-    name: 'nhaChoId',
-    required: true,
-    description: 'Điểm dừng Id',
-    type: 'number',
-  })
-  @ApiOperation({ summary: 'Danh sách duy tu nhà chờ' })
-  @ApiResponse({
-    status: 200,
-    description: 'Get all duy tu nha cho successfully',
-  })
+  @MessagePattern({ btcsht: 'nha_cho.duy_tu_nha_cho.find_many' })
   async findMany(
-    @Query('offset') offset: number | null,
-    @Query('limit') limit: number | null,
-    @Query('nhaChoId') nhaChoId: number,
-  ) {
-    const result = await this.duyTuNhaChoService.findMany(
-      offset,
-      limit,
-      nhaChoId,
-    );
-    return ResponseHelper.response(
-      result.statusCode,
-      result.message,
-      result.data,
+    @Payload()
+    payload: {
+      offset: number | null;
+      limit: number | null;
+      nhaChoId: number;
+    },
+  ): Promise<MSCommunicate> {
+    return await this.duyTuNhaChoService.findMany(
+      payload.offset,
+      payload.limit,
+      payload.nhaChoId,
     );
   }
 
-  @Get('/:id')
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth('Token')
-  @ApiOperation({ summary: 'Lấy một duy tu nhà chờ' })
-  @ApiResponse({
-    status: 200,
-    description: 'Get one duy tu nha cho successfully',
-  })
-  async findOne(@Param('id') id: number) {
-    const result = await this.duyTuNhaChoService.findOne(id);
-    return result;
+  @MessagePattern({ btcsht: 'nha_cho.duy_tu_nha_cho.find_one' })
+  async findOne(@Payload() id: number): Promise<MSCommunicate> {
+    return await this.duyTuNhaChoService.findOne(id);
   }
 
-  @Post()
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth('Token')
-  @ApiOperation({ summary: 'Tạo mới một duy tu nhà chờ' })
-  @ApiResponse({
-    status: 201,
-    description: 'Create one duy tu nha cho successfully',
-  })
-  async create(@Body() payload: CreateDuyTuNhaChoDto) {
-    const result = await this.duyTuNhaChoService.create(payload);
-    return result;
+  @MessagePattern({ btcsht: 'nha_cho.duy_tu_nha_cho.create' })
+  async create(@Payload() payload: IDuyTuNhaCho): Promise<MSCommunicate> {
+    return await this.duyTuNhaChoService.create(payload);
   }
 
-  @Patch('/:id')
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth('Token')
-  @ApiOperation({ summary: 'Sửa đổi một duy tu nhà chờ' })
-  @ApiResponse({
-    status: 200,
-    description: 'Update one duy tu nha cho successfully',
-  })
-  async update(@Param('id') id: number, @Body() payload: UpdateDuyTuNhaChoDto) {
-    const result = await this.duyTuNhaChoService.update(id, payload);
-    return result;
+  @MessagePattern({ btcsht: 'nha_cho.duy_tu_nha_cho.update' })
+  async update(
+    @Payload() payload: { id: number; data: IDuyTuNhaCho },
+  ): Promise<MSCommunicate> {
+    return await this.duyTuNhaChoService.update(payload.id, payload.data);
   }
 
-  @Delete('/:id')
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth('Token')
-  @ApiOperation({ summary: 'Xoá một duy tu nhà chờ' })
-  @ApiResponse({
-    status: 200,
-    description: 'Delete one duy tu nha cho successfully',
-  })
-  async delete(@Param('id') id: number) {
-    const result = await this.duyTuNhaChoService.delete(id);
-    return result;
+  @MessagePattern({ btcsht: 'nha_cho.duy_tu_nha_cho.delete' })
+  async delete(@Payload() id: number): Promise<MSCommunicate> {
+    return await this.duyTuNhaChoService.delete(id);
   }
 }

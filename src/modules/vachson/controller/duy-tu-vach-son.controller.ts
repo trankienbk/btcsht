@@ -1,128 +1,52 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Param,
-  Patch,
-  Post,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiQuery,
-  ApiResponse,
-  ApiTags,
-} from '@nestjs/swagger';
-import { AuthGuard } from 'src/modules/sys/auth/guards/auth.guard';
-import {
-  CreateDuyTuVachSonDto,
-  UpdateDuyTuVachSonDto,
-} from '../dtos/duy-tu-vach-son.dto';
+import { Controller } from '@nestjs/common';
+import { MessagePattern, Payload } from '@nestjs/microservices';
+import { MSCommunicate } from 'src/utils/ms-output.util';
+import { IDuyTuVachSon } from '../interface/duy-tu-vach-son.interface';
 import { DuyTuVachSonService } from '../service/duy-tu-vach-son.service';
-import ResponseHelper from 'src/utils/ms-response.utli';
+
 @Controller('vach-son/duy-tu')
-@ApiTags('duy tu vạch sơn')
 export class DuyTuVachSonController {
-  constructor(private duyTuVachSonService: DuyTuVachSonService) {}
+  constructor(private readonly duyTuVachSonService: DuyTuVachSonService) {}
 
-  @Get()
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth('Token')
-  @ApiQuery({
-    name: 'offset',
-    required: false,
-    description: 'Bỏ qua một số lượng bản ghi nhất định',
-    type: 'number',
-  })
-  @ApiQuery({
-    name: 'limit',
-    required: false,
-    description: 'Giới hạn số bản ghi trong một trang',
-    type: 'number',
-  })
-  @ApiQuery({
-    name: 'vachSonId',
-    required: true,
-    description: 'Vạch sơn Id',
-    type: 'number',
-  })
-  @ApiOperation({ summary: 'Danh sách duy tu vạch sơn' })
-  @ApiResponse({
-    status: 200,
-    description: 'Get all duy tu vach son successfully',
-  })
-  async findMany(
-    @Query('offset') offset: number | null,
-    @Query('limit') limit: number | null,
-    @Query('vachSonId') vachSonId: number,
-  ) {
-    const result = await this.duyTuVachSonService.findMany(
-      offset,
-      limit,
-      vachSonId,
-    );
-    return ResponseHelper.response(
-      result.statusCode,
-      result.message,
-      result.data,
+  @MessagePattern({ btcsht: 'vach_son.duy_tu_vach_son.find_many' })
+  async findManyDuyTuVachSon(
+    @Payload()
+    payload: {
+      offset: number | null;
+      limit: number | null;
+      vachSonId: number;
+    },
+  ): Promise<MSCommunicate> {
+    return await this.duyTuVachSonService.findMany(
+      payload.offset,
+      payload.limit,
+      payload.vachSonId,
     );
   }
 
-  @Get('/:id')
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth('Token')
-  @ApiOperation({ summary: 'Lấy một duy tu vạch sơn' })
-  @ApiResponse({
-    status: 200,
-    description: 'Get one duy tu vach son successfully',
-  })
-  async findOne(@Param('id') id: number) {
-    const result = await this.duyTuVachSonService.findOne(id);
-    return result;
+  @MessagePattern({ btcsht: 'vach_son.duy_tu_vach_son.find_one' })
+  async findOneDuyTuVachSonById(@Payload() id: number): Promise<MSCommunicate> {
+    return await this.duyTuVachSonService.findOneById(id);
   }
 
-  @Post()
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth('Token')
-  @ApiOperation({ summary: 'Tạo mới một duy tu vạch sơn' })
-  @ApiResponse({
-    status: 200,
-    description: 'Create one duy tu vach son successfully',
-  })
-  async create(@Body() payload: CreateDuyTuVachSonDto) {
-    const result = await this.duyTuVachSonService.create(payload);
-    return result;
+  @MessagePattern({ btcsht: 'vach_son.duy_tu_vach_son.create' })
+  async createOneDuyTuVachSon(
+    @Payload() payload: IDuyTuVachSon,
+  ): Promise<MSCommunicate> {
+    return await this.duyTuVachSonService.createOne(payload);
   }
 
-  @Patch('/:id')
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth('Token')
-  @ApiOperation({ summary: 'Sửa đổi một duy tu vạch sơn' })
-  @ApiResponse({
-    status: 200,
-    description: 'Update one duy tu vach son successfully',
-  })
-  async update(
-    @Param('id') id: number,
-    @Body() payload: UpdateDuyTuVachSonDto,
-  ) {
-    const result = await this.duyTuVachSonService.update(id, payload);
-    return result;
+  @MessagePattern({ btcsht: 'vach_son.duy_tu_vach_son.update' })
+  async updateOneDuyTuVachSon(
+    @Payload() payload: { id: number; data: IDuyTuVachSon },
+  ): Promise<MSCommunicate> {
+    return await this.duyTuVachSonService.updateOne(payload.id, payload.data);
   }
 
-  @Delete('/:id')
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth('Token')
-  @ApiOperation({ summary: 'Xoá một duy tu vạch sơn' })
-  @ApiResponse({
-    status: 200,
-    description: 'Delete one duy tu vach son successfully',
-  })
-  async delete(@Param('id') id: number) {
-    const result = await this.duyTuVachSonService.delete(id);
-    return result;
+  @MessagePattern({ btcsht: 'vach_son.duy_tu_vach_son.delete' })
+  async softDeleteOneDuyTuVachSon(
+    @Payload() id: number,
+  ): Promise<MSCommunicate> {
+    return await this.duyTuVachSonService.softDelete(id);
   }
 }

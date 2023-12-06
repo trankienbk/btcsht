@@ -1,105 +1,48 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Param,
-  Patch,
-  Post,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiQuery,
-  ApiResponse,
-  ApiTags,
-} from '@nestjs/swagger';
-import { AuthGuard } from 'src/modules/sys/auth/guards/auth.guard';
-import {
-  CreateDuongNoiBoDto,
-  UpdateDuongNoiBoDto,
-} from '../dtos/duong-noi-bo.dto';
+import { Controller } from '@nestjs/common';
+import { MessagePattern, Payload } from '@nestjs/microservices';
+import { MSCommunicate } from 'src/utils/ms-output.util';
+import { IDanhMucDuongNoiBo } from '../interface/duong-noi-bo.interface';
 import { DuongNoiBoService } from '../service/duong-noi-bo.service';
-import func from '../../../utils/ms-response.utli';
-@Controller('duong-noi-bo/doi-tuong')
-@ApiTags('Đường nội bộ')
+
+@Controller('vinh-xe-bus/doi-tuong')
 export class DuongNoiBoController {
-  constructor(private duongNoiBoService: DuongNoiBoService) {}
+  constructor(private readonly duongNoiBoService: DuongNoiBoService) {}
 
-  @Get()
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth('Token')
-  @ApiQuery({
-    name: 'offset',
-    required: false,
-    description: 'Bỏ qua một số lượng bản ghi nhất định',
-    type: 'number',
-  })
-  @ApiQuery({
-    name: 'limit',
-    required: false,
-    description: 'Giới hạn số bản ghi trong một trang',
-    type: 'number',
-  })
-  @ApiQuery({
-    name: 'name',
-    required: false,
-    description: 'Tên đường nội bộ',
-    type: 'string',
-  })
-  @ApiOperation({ summary: 'Danh sách đường nội bộ' })
-  @ApiResponse({
-    status: 200,
-    description: 'Get all đường nội bộ successfully',
-  })
+  @MessagePattern({ btcsht: 'duong_noi_bo.duong_noi_bo.find_many' })
   async findMany(
-    @Query('offset') offset: number | null,
-    @Query('limit') limit: number | null,
-    @Query('name') name: string | null,
-  ) {
-    const result = await this.duongNoiBoService.findMany(offset, limit, name);
-    return func.response(result.statusCode, result.message, result.data);
+    @Payload()
+    payload: {
+      offset: number | null;
+      limit: number | null;
+      name: string | null;
+    },
+  ): Promise<MSCommunicate> {
+    return await this.duongNoiBoService.findMany(
+      payload.offset,
+      payload.limit,
+      payload.name,
+    );
   }
 
-  @Get('/:id')
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth('Token')
-  @ApiOperation({ summary: 'Lấy ra một đường nội bộ cụ thể' })
-  @ApiResponse({ status: 200, description: 'Get cay xanh successfully' })
-  async findOne(@Param('id') id: number) {
-    const result = await this.duongNoiBoService.findOne(id);
-    return func.response(result.statusCode, result.message, result.data);
+  @MessagePattern({ btcsht: 'duong_noi_bo.duong_noi_bo.find_one' })
+  async findOne(@Payload() id: number): Promise<MSCommunicate> {
+    return await this.duongNoiBoService.findOne(id);
   }
 
-  @Post()
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth('Token')
-  @ApiOperation({ summary: 'Thêm mới đường nội bộ' })
-  @ApiResponse({ status: 201, description: 'Create cay xanh successfully' })
-  async create(@Body() payload: CreateDuongNoiBoDto) {
-    const result = await this.duongNoiBoService.create(payload);
-    return func.response(result.statusCode, result.message, result.data);
+  @MessagePattern({ btcsht: 'duong_noi_bo.duong_noi_bo.create' })
+  async create(@Payload() payload: IDanhMucDuongNoiBo): Promise<MSCommunicate> {
+    return await this.duongNoiBoService.create(payload);
   }
 
-  @Patch('/:id')
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth('Token')
-  @ApiOperation({ summary: 'Cập nhật đường nội bộ' })
-  @ApiResponse({ status: 200, description: 'Update cay xanh successfully' })
-  async update(@Param('id') id: number, @Body() payload: UpdateDuongNoiBoDto) {
-    const result = await this.duongNoiBoService.update(id, payload);
-    return func.response(result.statusCode, result.message, result.data);
+  @MessagePattern({ btcsht: 'duong_noi_bo.duong_noi_bo.update' })
+  async update(
+    @Payload() payload: { id: number; data: IDanhMucDuongNoiBo },
+  ): Promise<MSCommunicate> {
+    return await this.duongNoiBoService.update(payload.id, payload.data);
   }
 
-  @Delete('/:id')
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth('Token')
-  @ApiOperation({ summary: 'Xoá đường nội bộ' })
-  @ApiResponse({ status: 200, description: 'Delete cay xanh successfully' })
-  async delete(@Param('id') id: number) {
-    const result = await this.duongNoiBoService.delete(id);
-    return func.response(result.statusCode, result.message, result.data);
+  @MessagePattern({ btcsht: 'duong_noi_bo.duong_noi_bo.delete' })
+  async delete(@Payload() id: number): Promise<MSCommunicate> {
+    return await this.duongNoiBoService.delete(id);
   }
 }

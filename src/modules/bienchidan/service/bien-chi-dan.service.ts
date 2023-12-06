@@ -1,65 +1,194 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
-import { firstValueFrom, timeout } from 'rxjs';
+import { HttpStatus, Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 import { MSCommunicate } from 'src/utils/ms-output.util';
-import {
-  CreateBienChiDanDto,
-  UpdateBienChiDanDto,
-} from '../dtos/bien-chi-dan.dto';
-import { MS_TIME_OUT } from 'src/common/constants/ms.constants';
+import { Like, Repository, Not } from 'typeorm';
+import { BienChiDanEntity } from '../entities/bien-chi-dan.entity';
+import { IDanhMucBienChiDan } from '../interface/bien-chi-dan.interface';
+import { Subject } from 'src/common/message/subject.message';
+import { Content } from 'src/common/message/content.message';
+import { Field } from 'src/common/message/field.message';
+import { DiemDungEntity } from 'src/modules/diemdung/entities/diem-dung.entity';
+
 @Injectable()
 export class BienChiDanService {
-  constructor(@Inject('MS_SERVICE') private readonly mSClient: ClientProxy) {}
+  constructor(
+    @InjectRepository(BienChiDanEntity)
+    private bienChiDanRepository: Repository<BienChiDanEntity>,
+    @InjectRepository(DiemDungEntity)
+    private diemDungRepository: Repository<DiemDungEntity>,
+  ) {}
 
   async findMany(
     offset: number | null,
     limit: number | null,
     name: string | null,
-  ) {
-    const res: MSCommunicate = await firstValueFrom(
-      this.mSClient
-        .send(
-          { btcsht: 'bien_chi_dan.bien_chi_dan.find_many' },
-          { offset, limit, name },
-        )
-        .pipe(timeout(MS_TIME_OUT)),
+  ): Promise<MSCommunicate> {
+    const BienChiDan = await this.bienChiDanRepository.find({
+      relations: {
+        diemDungBienChiDan: true,
+      },
+      where: {
+        name: Like(`%${name ?? ''}%`),
+      },
+      skip: limit && offset,
+      take: limit,
+    });
+
+    const total = await this.bienChiDanRepository.count();
+    const data = {
+      signpost: BienChiDan,
+      total: total,
+    };
+    return new MSCommunicate(
+      HttpStatus.OK,
+      Content.SUCCESSFULLY,
+      Subject.SIGNPOST,
+      data,
+      Field.READ,
     );
-    return res;
   }
 
-  async findOne(id: number) {
-    const res: MSCommunicate = await firstValueFrom(
-      this.mSClient
-        .send({ btcsht: 'bien_chi_dan.bien_chi_dan.find_one' }, id)
-        .pipe(timeout(MS_TIME_OUT)),
+  async findOne(id: number): Promise<MSCommunicate> {
+    const signpost = await this.bienChiDanRepository.findOne({
+      relations: {
+        diemDungBienChiDan: true,
+      },
+      where: { id: id },
+    });
+    if (!signpost) {
+      return new MSCommunicate(
+        HttpStatus.ACCEPTED,
+        Content.NOT_FOUND,
+        Subject.SIGNPOST,
+        null,
+        Field.READ,
+      );
+    }
+    return new MSCommunicate(
+      HttpStatus.OK,
+      Content.SUCCESSFULLY,
+      Subject.SIGNPOST,
+      signpost,
+      Field.READ,
     );
-    return res;
   }
 
-  async create(payload: CreateBienChiDanDto) {
-    const res: MSCommunicate = await firstValueFrom(
-      this.mSClient.send(
-        { btcsht: 'bien_chi_dan.bien_chi_dan.create' },
-        payload,
-      ),
+  async create(payload: IDanhMucBienChiDan): Promise<MSCommunicate> {
+    const exist = await this.bienChiDanRepository.findOne({
+      where: { name: payload.name },
+    });
+    if (exist) {
+      return new MSCommunicate(
+        HttpStatus.ACCEPTED,
+        Content.EXIST,
+        Subject.SIGNPOST,
+        null,
+        Field.NAME,
+      );
+    }
+
+    const diemDung = await this.diemDungRepository.findOne({
+      where: { id: payload.diemDungId },
+    });
+
+    if (!diemDung) {
+      return new MSCommunicate(
+        HttpStatus.ACCEPTED,
+        Content.NOT_FOUND,
+        Subject.SIGNPOST,
+        null,
+        Field.DIEM_DUNG_ID,
+      );
+    }
+
+    const signpost = await this.bienChiDanRepository.save({
+      name: payload.name,
+      description: payload.description,
+      diemDungBienChiDan: {
+        id: payload.diemDungId,
+      },
+    });
+
+    return new MSCommunicate(
+      HttpStatus.CREATED,
+      Content.SUCCESSFULLY,
+      Subject.SIGNPOST,
+      signpost,
+      Field.CREATE,
     );
-    return res;
   }
 
-  async update(id: number, payload: UpdateBienChiDanDto) {
-    const res: MSCommunicate = await firstValueFrom(
-      this.mSClient.send(
-        { btcsht: 'bien_chi_dan.bien_chi_dan.update' },
-        { id: id, data: payload },
-      ),
+  async update(
+    id: number,
+    payload: IDanhMucBienChiDan,
+  ): Promise<MSCommunicate> {
+    const exist = await this.bienChiDanRepository.findOne({
+      where: { name: payload.name, id: Not(id) },
+    });
+    if (exist) {
+      return new MSCommunicate(
+        HttpStatus.ACCEPTED,
+        Content.EXIST,
+        Subject.SIGNPOST,
+        null,
+        Field.NAME,
+      );
+    }
+
+    const diemDung = await this.diemDungRepository.findOne({
+      where: { id: payload.diemDungId },
+    });
+
+    if (!diemDung) {
+      return new MSCommunicate(
+        HttpStatus.ACCEPTED,
+        Content.NOT_FOUND,
+        Subject.SIGNPOST,
+        null,
+        Field.DIEM_DUNG_ID,
+      );
+    }
+
+    await this.bienChiDanRepository.update(
+      { id },
+      {
+        name: payload.name,
+        description: payload.description,
+        diemDungBienChiDan: {
+          id: payload.diemDungId,
+        },
+      },
     );
-    return res;
+
+    return new MSCommunicate(
+      HttpStatus.OK,
+      Content.SUCCESSFULLY,
+      Subject.SIGNPOST,
+      payload,
+      Field.UPDATE,
+    );
   }
 
-  async delete(id: number) {
-    const res: MSCommunicate = await firstValueFrom(
-      this.mSClient.send({ btcsht: 'bien_chi_dan.bien_chi_dan.delete' }, id),
+  async delete(id: number): Promise<MSCommunicate> {
+    const exist = await this.bienChiDanRepository.findOne({
+      where: { id: id },
+    });
+    if (!exist) {
+      return new MSCommunicate(
+        HttpStatus.ACCEPTED,
+        Content.NOT_FOUND,
+        Subject.SIGNPOST,
+        null,
+        Field.DELETE,
+      );
+    }
+    await this.bienChiDanRepository.softDelete(id);
+    return new MSCommunicate(
+      HttpStatus.OK,
+      Content.SUCCESSFULLY,
+      Subject.SIGNPOST,
+      id,
+      Field.DELETE,
     );
-    return res;
   }
 }

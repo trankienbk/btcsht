@@ -1,11 +1,13 @@
 import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { ClientProxyFactory, Transport } from '@nestjs/microservices';
 import { VinhXeBusController } from './controller/vinh-xe-bus.controller';
+import { VinhXeBusEntity } from './entities/vinh-xe-bus.entity';
 import { VinhXeBusService } from './service/vinh-xe-bus.service';
+import { DiemDungEntity } from '../diemdung/entities/diem-dung.entity';
 
 @Module({
-  imports: [JwtModule],
+  imports: [TypeOrmModule.forFeature([VinhXeBusEntity, DiemDungEntity])],
   controllers: [VinhXeBusController],
   providers: [
     VinhXeBusService,
