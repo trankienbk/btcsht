@@ -1,0 +1,35 @@
+export const HttpMessage = {
+  READ_SUCCCESSFULLY: 'Truy vấn thành công',
+  CREATE_SUCCESSFULLY: 'Tạo mới bản ghi thành công',
+  UPDATE_SUCCESSFULLY: 'Cập nhật bản ghi thành công',
+  SOFT_DELETE_SUCCESSFULLY: 'Xoá bản ghi thành công',
+  RESTORE_SUCCESSFULLY: 'Khôi phục thành công',
+  LOGIN_SUCCESSFULLY: 'Đăng nhập thành công',
+  LOGOUT_SUCCESSFULLY: 'Đăng xuất thành công',
+  DO_SUCCESSFULLY: 'Thực hiện thành công',
+  DO_NOT_HAVE_PERMISSION: 'Không có quyền truy cập',
+
+  OPTION_VALIDATE: {
+    REQUIRED: 'required',
+    NOT_FOUND: 'not_found',
+    NOT_EXIST: 'not_exist',
+    NOT_RIGHT: 'not_right',
+    INVALID: 'invalid',
+    NOT_NULL: 'not_null',
+  },
+  GLOBAL_VALIDATE: {
+    SUCCESSFULLY: 'successfully',
+    DELETE_ONE_SUCCESSFULLY: 'delete_one_successfully',
+    UPDATE_ONE_SUCCESSFULLY: 'update_one_successfully',
+  },
+  SUBJECT: {
+    ACCOUNT: 'account',
+    PASSWORD: 'password',
+    LOGIN: 'login',
+    TINH_TRANG: 'tinh_trang',
+    PROFILE: 'profile',
+    LOGOUT: 'logout',
+    REFRESH_TOKEN: 'refresh_token',
+    DISTRICT: 'district',
+  },
+};
