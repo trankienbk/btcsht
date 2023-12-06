@@ -1,16 +1,8 @@
 {
-  "projects": {
-    "mylib": {
-      "type": "library",
-      "root": "libs/mylib",
-      "entryFile": "index",
-      "sourceRoot": "libs/mylib/src",
-      "compilerOptions": {
-        "tsConfigPath": "libs/mylib/tsconfig.lib.json"
-      }
-    }
-  },
+  "$schema": "https://json.schemastore.org/nest-cli",
+  "collection": "@nestjs/schematics",
+  "sourceRoot": "src",
   "compilerOptions": {
-    "webpack": true
+    "deleteOutDir": true
   }
 }
